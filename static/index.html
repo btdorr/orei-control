@@ -26,6 +26,18 @@
                     <button class="btn btn-primary me-2" id="refreshBtn">
                         <i class="bi bi-arrow-clockwise"></i> Refresh
                     </button>
+                    <!-- System Menu -->
+                    <div class="dropdown me-2">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="systemDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="System Menu">
+                            <i class="bi bi-gear-fill"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="systemDropdown">
+                            <li><h6 class="dropdown-header">System Control</h6></li>
+                            <li><a class="dropdown-item text-warning" href="#" id="shutdownMenuItem">
+                                <i class="bi bi-power me-2"></i>Shutdown System
+                            </a></li>
+                        </ul>
+                    </div>
                     <!-- Theme Selector -->
                     <div class="dropdown theme-selector">
                         <button class="btn btn-secondary dropdown-toggle" type="button" id="themeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -408,6 +420,63 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Shutdown Confirmation Modal -->
+    <div class="modal fade" id="shutdownModal" tabindex="-1" aria-labelledby="shutdownModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-warning" id="shutdownModalLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i>System Shutdown
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This will shut down the Raspberry Pi host system.
+                    </div>
+                    <p>Are you sure you want to shutdown the system? This will:</p>
+                    <ul>
+                        <li>Stop the Orei Control Panel service</li>
+                        <li>Shut down the Raspberry Pi safely</li>
+                        <li>Require physical power-on to restart</li>
+                    </ul>
+                    <p class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        The system will shutdown after 1 minute, giving you time to cancel if needed.
+                    </p>
+                    
+                    <!-- Shutdown status display -->
+                    <div id="shutdownStatus" style="display: none;">
+                        <div class="alert alert-info" role="alert">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                                <span id="shutdownMessage">Shutdown initiated...</span>
+                            </div>
+                            <div class="mt-2">
+                                <small>Time remaining: <span id="shutdownCountdown">60</span> seconds</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div id="shutdownActions">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmShutdownBtn">
+                            <i class="bi bi-power me-2"></i>Shutdown System
+                        </button>
+                    </div>
+                    <div id="shutdownActiveActions" style="display: none;">
+                        <button type="button" class="btn btn-warning" id="cancelShutdownBtn">
+                            <i class="bi bi-x-circle me-2"></i>Cancel Shutdown
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>

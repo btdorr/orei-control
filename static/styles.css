@@ -573,12 +573,10 @@ body {
 
 .theme-selector .dropdown-item {
     color: var(--text-primary);
-    transition: background-color 0.2s ease;
 }
 
 .theme-selector .dropdown-item:hover {
-    background-color: var(--table-hover-bg);
-    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
 }
 
 .theme-selector .dropdown-item.active {
@@ -587,8 +585,106 @@ body {
 }
 
 .theme-selector .dropdown-item i {
-    width: 20px;
-    text-align: center;
+    width: 16px;
+    margin-right: 8px;
+}
+
+/* System menu styles */
+.dropdown-menu {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px var(--shadow-color);
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.dropdown-header {
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.dropdown-item.text-warning {
+    color: #ffc107 !important;
+}
+
+.dropdown-item.text-warning:hover {
+    color: #ffb300 !important;
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+/* Shutdown modal styles */
+#shutdownModal .modal-content {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+#shutdownModal .modal-header {
+    background-color: var(--card-header-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#shutdownModal .modal-title {
+    color: #ffc107;
+}
+
+#shutdownModal .modal-body {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+#shutdownModal .modal-footer {
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+}
+
+#shutdownModal .alert {
+    border: 1px solid var(--border-color);
+}
+
+#shutdownModal .alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: var(--text-primary);
+}
+
+#shutdownModal .alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-color: rgba(13, 202, 240, 0.3);
+    color: var(--text-primary);
+}
+
+#shutdownModal ul {
+    color: var(--text-secondary);
+}
+
+#shutdownModal .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Dark theme overrides for modals */
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="dark"] #shutdownModal .alert-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.4);
+}
+
+[data-theme="dark"] #shutdownModal .alert-info {
+    background-color: rgba(13, 202, 240, 0.15);
+    border-color: rgba(13, 202, 240, 0.4);
 }
 
 /* Badge styles */

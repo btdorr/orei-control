@@ -832,6 +832,65 @@ def roku_launch_app():
             'error': str(e)
         }), 500
 
+# System Management API endpoint
+@app.route('/api/system/shutdown', methods=['POST'])
+def system_shutdown():
+    """Shutdown the Raspberry Pi system"""
+    try:
+        data = request.get_json()
+        confirmation = data.get('confirmed', False)
+        
+        if not confirmation:
+            return jsonify({
+                'success': False,
+                'error': 'Shutdown confirmation required'
+            }), 400
+        
+        # Log the shutdown request
+        logger.warning("System shutdown requested via web interface")
+        
+        # Send shutdown command with a 10-second delay to allow response
+        subprocess.Popen(['sudo', 'shutdown', '-h', '+1', 'Shutdown requested from Orei Control Panel'])
+        
+        return jsonify({
+            'success': True,
+            'message': 'System shutdown initiated. The device will power off in 1 minute.',
+            'countdown': 60
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to initiate system shutdown: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to initiate shutdown: {str(e)}'
+        }), 500
+
+@app.route('/api/system/shutdown/cancel', methods=['POST'])
+def cancel_shutdown():
+    """Cancel a pending system shutdown"""
+    try:
+        # Cancel any pending shutdown
+        subprocess.run(['sudo', 'shutdown', '-c'], check=True)
+        
+        logger.info("System shutdown cancelled via web interface")
+        
+        return jsonify({
+            'success': True,
+            'message': 'System shutdown cancelled'
+        })
+        
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            'success': False,
+            'error': 'No pending shutdown to cancel'
+        }), 400
+    except Exception as e:
+        logger.error(f"Failed to cancel system shutdown: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to cancel shutdown: {str(e)}'
+        }), 500
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):

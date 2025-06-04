@@ -8,6 +8,7 @@ import { AudioControl } from './audio.js';
 import { CommandHistory } from './commands.js';
 import { Utils } from './utils.js';
 import { RokuControl } from './roku.js';
+import { SystemManager } from './system.js';
 
 // Global application state
 window.oreiApp = {
@@ -22,6 +23,9 @@ async function initialize() {
     try {
         // Initialize theme system
         ThemeManager.init();
+        
+        // Initialize system management
+        SystemManager.init();
         
         // Initialize command history
         CommandHistory.init();
@@ -77,6 +81,7 @@ window.oreiDebug = {
     AudioControl,
     CommandHistory,
     ThemeManager,
+    SystemManager,
     Utils,
     RokuControl,
     getState: () => window.oreiApp,
