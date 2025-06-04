@@ -1,166 +1,262 @@
-# Orei UHD-404MV Control Panel
+# Orei UHD-401MV Control Panel
 
-A simplified web-based control interface for the Orei UHD-404MV HDMI Multiviewer via RS-232 communication.
+A comprehensive web-based control interface for the Orei UHD-401MV HDMI Multiviewer with RS-232 communication and integrated Roku device control.
 
 ## Features
 
-- **Power Control**: Turn the device on/off
-- **Display Modes**: Single, PIP, PBP, Triple, and Quad screen modes
-- **Audio Control**: Volume, mute, and source selection
+### Core Device Control
+- **Power Control**: Turn the multiviewer device on/off
+- **Display Modes**: Single, PIP, PBP, Triple, and Quad screen modes with real-time preview
+- **Audio Control**: Volume slider with up/down buttons, mute toggle, and source selection
+- **Window Input Assignment**: Interactive display diagram for setting HDMI inputs per window
 - **Output Settings**: Resolution and HDCP configuration
-- **Visual Display**: Interactive diagram showing current layout
+- **Advanced Mode Settings**: Position, size, and aspect ratio controls for each display mode
+
+### Roku Integration
+- **Device Discovery**: Automatic network scanning for Roku devices using SSDP and network probing
+- **Device Management**: Modal-based configuration interface for mapping Roku devices to display windows
+- **Remote Controls**: Dynamic Roku remote interfaces that appear based on current display mode
+- **Window-Aware Remotes**: Only shows remotes for visible display windows
+- **Horizontal Layout**: Optimized side-by-side remote layout for multi-window modes
+
+### User Interface
+- **Theme Support**: Auto, Light, and Dark themes with full modal and component coverage
+- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
+- **Tab Navigation**: Separate Remote Control and Advanced Settings tabs
+- **Modal Dialogs**: Non-intrusive device configuration workflow
+- **Real-time Updates**: Event-driven UI updates when settings change
+- **Toast Notifications**: User feedback for all actions and status changes
+
+### Technical Features
+- **Rate-Limited Commands**: Prevents RS-232 communication overload
 - **Command History**: Track all RS-232 commands and responses
-- **Rate Limiting**: Prevents overwhelming the RS-232 interface
+- **Debug Console**: Send custom commands for testing and troubleshooting
+- **Sequential Processing**: Eliminates command conflicts and garbled responses
+- **Error Recovery**: Automatic retry logic and graceful failure handling
 
-## Recent Improvements
+## Recent Major Improvements
 
-### Code Simplification
-- Removed duplicate display diagram implementations
-- Consolidated event handling into organized modules
-- Simplified Flask backend by removing unused endpoints
-- Cleaned up HTML structure and removed redundant sections
+### Roku Device Integration (v2.0)
+- Complete Roku device discovery and control system
+- Modal-based device management workflow
+- Dynamic remote controls based on display configuration
+- Network scanning with multi-threaded device discovery
+- Automatic device mapping and persistence
 
-### Performance Optimizations
-- Added command rate limiting (300ms minimum between requests)
-- Sequential command execution instead of parallel requests
-- Increased auto-refresh interval to 10 seconds
-- Better error handling and response parsing
+### UI/UX Enhancements
+- **Dark Mode**: Full dark theme support across all components including modals
+- **Tablet Optimization**: Larger touch targets and improved layout for tablet usage
+- **Horizontal Remote Layout**: Fixed side-by-side Roku remote positioning
+- **Modal Interface**: Clean device configuration without disrupting main interface
+- **Volume Controls**: Added increment/decrement buttons alongside slider
 
-### RS-232 Communication
+### Bug Fixes & Optimizations
+- **Volume Synchronization**: Fixed slider to show actual device volume instead of default 50
+- **Window Input Loading**: Resolved browser refresh issues in quad mode
+- **Duplicate ID Prevention**: Fixed modal functionality conflicts
+- **Focus Management**: Proper modal accessibility and close behavior
+- **Command Sequencing**: Eliminated RS-232 response corruption from parallel commands
 
-**Connection Settings:**
-- Baud rate: 115200
-- Data bits: 8  
-- Stop bits: 1
-- Parity: None
-- Port: `/dev/serial0`
+### Code Quality
+- **Modular Architecture**: Organized JavaScript modules for maintainability
+- **Event-Driven Design**: Proper event handling for component communication
+- **Error Handling**: Comprehensive error recovery and user feedback
+- **Performance**: Optimized command execution and UI updates
+- **Accessibility**: WCAG-compliant interface with proper ARIA attributes
 
-**Working Commands (ASCII Format):**
-- `r power!` - Check power status (returns "power on" or "power off")
-- `r multiview!` - Get current display mode (returns "single screen", "PIP", etc.)
-- `r output audio!` - Get output audio source  
-- `r output audio vol!` - Get output audio volume
-- `r output audio mute!` - Get output audio mute status
-- `r output res!` - Get output resolution
-- `r output hdcp!` - Get output HDCP status
-- `r window 1 in!` - Get window 1's selected input
-- `power 0!` - Turn device off
-- `power 1!` - Turn device on
-- `s multiview x!` - Set display mode (x=1-5: single, PIP, PBP, triple, quad)
-- `s output audio vol x!` - Set audio volume (x=0-100)
-- `s output audio mute x!` - Set audio mute (x=0 off, x=1 on)
-- `s window x in y!` - Set window x to input y (x=1-4, y=1-4)
+## Quick Start
 
-**Previously Invalid Commands (Now Fixed):**
-- ~~`r volume!`~~ → Use `r output audio vol!`
-- ~~`r mute!`~~ → Use `r output audio mute!`
-- ~~`r resolution!`~~ → Use `r output res!`
-- ~~`r hdcp!`~~ → Use `r output hdcp!`
-- ~~`r audio!`~~ → Use `r output audio!`
-- ~~`r window1!`~~ → Use `r window 1 in!`
+1. **Hardware Setup**: Connect RS-232 cable between Raspberry Pi and Orei UHD-401MV
+2. **Install**: Run `./setup.sh` on fresh Raspberry Pi OS
+3. **Configure**: Access web interface at `http://your-pi-ip`
+4. **Roku Setup**: Use "Configure Roku Devices" to discover and map your Roku devices
+5. **Control**: Use the interface to control both the multiviewer and connected Roku devices
 
-**Official Protocol:**
-According to Orei documentation, the UHD-401MV should use hexadecimal commands like:
-- `EB 90001200 ff 32000001020300000000000` (Single mode)
-- `EB 90001200 ff 32010001020300000000000` (PIP mode)
+## Installation
 
-However, your device appears to respond to ASCII commands, suggesting either:
-1. Custom firmware
-2. Different model/variant
-3. Bridge/converter in the communication path
+### Automated Setup (Recommended)
+```bash
+git clone <repository-url>
+cd orei-control
+chmod +x setup.sh
+./setup.sh
+```
 
-**Rate Limiting & Queuing:**
-- Minimum 300ms between commands
-- Sequential command execution to prevent RS-232 overload
-- Command queuing system with timeout handling
-- Enhanced error recovery mechanisms
-- Reduced command history buffer (50 entries max)
+### Manual Installation
+```bash
+# Install dependencies
+sudo apt update && sudo apt install -y python3-pip python3-venv netcat-openbsd
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install Python packages
+pip install -r requirements.txt
+
+# Start development server
+python app.py
+```
+
+## Usage Guide
+
+### Initial Setup
+1. Power on the Orei UHD-401MV device
+2. Access the web interface
+3. Click "Refresh" to load current device settings
+4. Go to "Configure Roku Devices" to set up streaming device control
+
+### Basic Operation
+- **Power**: Toggle device power with the power button
+- **Display Mode**: Select layout from dropdown (updates real-time preview)
+- **Window Inputs**: Click windows in the diagram to assign HDMI sources
+- **Audio**: Use volume slider/buttons and select audio source
+- **Roku Control**: Use virtual remotes that appear for active display windows
+
+### Advanced Features
+- **Theme Selection**: Use theme dropdown in header to switch between light/dark modes
+- **Debug Console**: Send custom RS-232 commands in Advanced Settings tab
+- **Command History**: Monitor all device communication for troubleshooting
+- **Modal Management**: Configure Roku devices without leaving current context
+
+### Roku Device Setup
+1. Click "Configure Roku Devices" or "Manage Devices" button
+2. Click "Discover Devices" to scan your network
+3. Select discovered devices and assign them to display windows
+4. Click "Save Configuration" to apply mappings
+5. Roku remotes will automatically appear for assigned windows
+
+## Configuration
+
+### RS-232 Settings
+- **Port**: `/dev/serial0` (Raspberry Pi GPIO) or `/dev/ttyUSB0` (USB adapter)
+- **Baud Rate**: 115200
+- **Data Bits**: 8, Stop Bits: 1, Parity: None
+- **Timeout**: 2 seconds
+- **Command Delay**: 200ms between sequential commands
+
+### Network Requirements
+- **Roku Discovery**: Devices must be on same subnet as Raspberry Pi
+- **Ports**: TCP 8060 (Roku ECP), UDP 1900 (SSDP discovery)
+- **Dependencies**: `netcat-openbsd` package for network scanning
+
+### Device Compatibility
+- **Multiviewer**: Orei UHD-401MV (tested with ASCII command protocol)
+- **Roku Devices**: All modern Roku devices with External Control Protocol (ECP)
+- **Network**: IPv4 networks with multicast support
 
 ## File Structure
 
 ```
-├── app.py                          # Flask backend (simplified)
+├── app.py                          # Flask backend with API endpoints
 ├── static/
-│   ├── index.html                  # Main UI (cleaned up)
-│   ├── styles.css                  # CSS with display diagram styles
+│   ├── index.html                  # Main responsive UI
+│   ├── styles.css                  # Complete theme system and responsive design
 │   └── js/
-│       ├── app.js                  # Main app with organized event handling
-│       └── modules/
-│           ├── api.js              # API client with rate limiting
-│           ├── device-control.js   # Device control logic
-│           ├── ui-utils.js         # UI utilities
-│           └── theme.js            # Theme management
-├── requirements.txt
-└── README.md
+│       ├── main.js                 # Application initialization
+│       ├── api.js                  # Rate-limited API client
+│       ├── device.js               # Multiviewer device control
+│       ├── display.js              # Display diagram and mode management
+│       ├── audio.js                # Audio control functions
+│       ├── roku.js                 # Roku device discovery and control
+│       ├── commands.js             # Command history management
+│       ├── theme.js                # Theme switching system
+│       └── utils.js                # Shared utilities and toast notifications
+├── requirements.txt                # Python dependencies
+├── setup.sh                       # Automated installation script
+└── README.md                       # This file
 ```
 
-## Installation
+## API Endpoints
 
-1. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Device Control
+- `POST /api/command` - Send RS-232 command to multiviewer
+- `GET /api/status` - Get device power and connection status
 
-2. Start the Flask server:
-   ```bash
-   # Development
-   python app.py
-   
-   # Production with gunicorn
-   source venv/bin/activate
-   gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 120 app:app
-   ```
-
-3. Access the web interface at `http://localhost:5000`
-
-## Configuration
-
-### Serial Port Settings
-- **Port**: `/dev/serial0` (Raspberry Pi default)
-- **Baud Rate**: 115200
-- **Timeout**: 2 seconds
-- **Command Delay**: 200ms between commands
-
-### Rate Limiting
-- **Minimum Request Interval**: 300ms
-- **Auto-refresh Interval**: 10 seconds
-- **Command History Limit**: 50 entries
-
-## Usage
-
-1. **Power Control**: Use the power button to turn the device on/off
-2. **Display Mode**: Select from 5 different display layouts
-3. **Window Selection**: Click on windows in the diagram to assign HDMI inputs
-4. **Audio Control**: Adjust volume, mute, and select audio source
-5. **Debug Console**: Send custom RS-232 commands for testing
+### Roku Integration
+- `POST /api/roku/discover` - Discover Roku devices on network
+- `POST /api/roku/command` - Send ECP command to specific Roku device
+- `GET /api/roku/devices` - Get configured device mappings
+- `POST /api/roku/devices` - Save device mapping configuration
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"No response" in command history**
-   - Caused by sending commands too quickly
-   - The rate limiting system now prevents this
-   - Allow 300ms minimum between commands
+**"No response" from device:**
+- Check RS-232 cable connection and port configuration
+- Verify device is powered on
+- Ensure no other processes are using the serial port
+- Try manual command: `echo "r power!" > /dev/serial0`
 
-2. **Connection errors**
-   - Check serial port permissions: `sudo usermod -a -G dialout $USER`
-   - Verify device is connected to correct port
-   - Restart the Flask application
+**Roku devices not discovered:**
+- Verify `netcat-openbsd` package is installed: `sudo apt install netcat-openbsd`
+- Check devices are on same network subnet
+- Ensure multicast traffic is not blocked by router/firewall
+- Try manual discovery: `nmap -p 8060 192.168.1.0/24`
 
-3. **Slow response times**
-   - Normal with rate limiting enabled
-   - Ensures reliable RS-232 communication
-   - Commands are queued and processed sequentially
+**Volume slider shows wrong value:**
+- Click "Refresh" to reload current device settings
+- Check command history for RS-232 communication errors
+- Volume may take a few seconds to update after device changes
+
+**Interface not loading properly:**
+- Clear browser cache and reload page
+- Check browser console for JavaScript errors
+- Verify Flask server is running: `sudo systemctl status orei-control`
+
+### Debug Tools
+
+**Command History**: Monitor RS-232 communication in Advanced Settings tab
+
+**Debug Console**: Send custom commands like:
+- `r power!` - Check power status
+- `r multiview!` - Get current display mode
+- `s multiview 5!` - Set quad screen mode
+
+**System Logs**: 
+```bash
+sudo journalctl -u orei-control.service -f
+```
+
+**Network Scanning**:
+```bash
+# Manual Roku discovery
+nmap -p 8060 --open $(ip route | grep 'scope link' | awk '{print $1}' | head -1)
+```
 
 ## Development
 
-The codebase has been simplified for easier maintenance:
+### Architecture
+- **Frontend**: Vanilla JavaScript with modular ES6 design
+- **Backend**: Flask with rate-limited RS-232 communication
+- **Styling**: Bootstrap 5 with custom CSS variables for theming
+- **Communication**: RESTful API with WebSocket-like real-time updates
 
-- **Modular JavaScript**: Each feature is in its own module
-- **Rate-limited API**: Prevents RS-232 overload
-- **Clean HTML**: Single output settings section
-- **Simplified Flask**: Only essential endpoints
-- **Better Error Handling**: Graceful failure recovery
+### Key Design Patterns
+- **Event-Driven**: Component communication via custom events
+- **Rate-Limited**: All device communication respects hardware limitations
+- **Responsive**: Mobile-first design with tablet optimizations
+- **Accessible**: WCAG 2.1 AA compliance with proper ARIA usage
 
-For development, you can adjust the rate limiting intervals in `static/js/modules/api.js`.
+### Contributing
+1. Fork repository and create feature branch
+2. Test on actual hardware (Raspberry Pi + Orei device)
+3. Verify both light and dark themes
+4. Test Roku integration with multiple devices
+5. Submit pull request with detailed description
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues, feature requests, or questions:
+1. Check troubleshooting section above
+2. Review command history and system logs
+3. Create GitHub issue with detailed information including:
+   - Hardware setup description
+   - Error messages or unexpected behavior
+   - Browser console output
+   - System logs from `journalctl`

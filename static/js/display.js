@@ -46,20 +46,14 @@ export const DisplayManager = {
                 break;
                 
             case 3: // PBP
-                const pbpMode = document.getElementById('pbpMode')?.value || '1';
-                console.log('PBP mode detected:', pbpMode);
-                if (pbpMode === '2') {
-                    // PBP Mode 2 - side by side with Window 2 being 1/4 size of Window 1
-                    console.log('Using PBP side-by-side layout with 3/4 and 1/4 split');
-                    this.createDisplayWindow(diagram, 1, 'pbp-large');
-                    this.createDisplayWindow(diagram, 2, 'pbp-small');
+                const pbpMode = window.oreiApp.currentMultiview && window.oreiApp.currentMultiview.includes('PBP');
+                
+                if (pbpMode) {
+                    return this.createPreviewPBP();
                 } else {
-                    // PBP Mode 1 - horizontal split (left/right) - DEFAULT 50/50
-                    console.log('Using PBP horizontal layout (left/right) 50/50');
-                    this.createDisplayWindow(diagram, 1, 'pbp-left');
-                    this.createDisplayWindow(diagram, 2, 'pbp-right');
+                    // Check for horizontal PBP (left/right) mode  
+                    return this.createPreviewPBPHorizontal();
                 }
-                break;
                 
             case 4: // Triple
                 const tripleMode = document.getElementById('tripleMode')?.value || '1';
@@ -163,21 +157,12 @@ export const DisplayManager = {
                 windowElement.style.right = margin;
         }
         
-        // Debug: Log the window inputs and the specific window number
-        console.log(`Creating PIP window ${num}, windowInputs:`, window.oreiApp.windowInputs);
-        console.log(`Window ${num} input should be:`, window.oreiApp.windowInputs ? window.oreiApp.windowInputs[num] : 'not set');
-        
         // Get input value - be more explicit about the retrieval
         let input = num; // default fallback
         if (window.oreiApp && window.oreiApp.windowInputs) {
             if (window.oreiApp.windowInputs.hasOwnProperty(num)) {
                 input = window.oreiApp.windowInputs[num];
-                console.log(`Using stored input for window ${num}: ${input}`);
-            } else {
-                console.log(`No stored input for window ${num}, using fallback: ${input}`);
             }
-        } else {
-            console.log(`windowInputs not available, using fallback for window ${num}: ${input}`);
         }
         
         windowElement.innerHTML = `
@@ -210,11 +195,20 @@ export const DisplayManager = {
     },
     
     // Set window input source
-    async setWindowInput(window, input) {
-        await API.sendCommand(`s window ${window} in ${input}!`);
-        window.oreiApp.windowInputs[window] = parseInt(input);
+    async setWindowInput(windowNum, input) {
+        await API.sendCommand(`s window ${windowNum} in ${input}!`);
+        
+        // Ensure windowInputs object exists
+        if (!window.oreiApp.windowInputs) {
+            window.oreiApp.windowInputs = {};
+        }
+        
+        window.oreiApp.windowInputs[windowNum] = parseInt(input);
         this.updateDiagram();
-        Utils.showToast(`Window ${window} set to HDMI ${input}`, 'success');
+        Utils.showToast(`Window ${windowNum} set to HDMI ${input}`, 'success');
+        
+        // Dispatch event to notify that window inputs have changed
+        document.dispatchEvent(new CustomEvent('windowInputsChanged'));
     },
     
     // Get window inputs from device
@@ -264,8 +258,8 @@ export const DisplayManager = {
             }
         }
         
-        // Debug: Log the window inputs to console
-        console.log('Window inputs loaded:', window.oreiApp.windowInputs);
+        // Dispatch event to notify that window inputs have been loaded
+        document.dispatchEvent(new CustomEvent('windowInputsChanged'));
     },
     
     // Get number of windows for current mode
@@ -400,5 +394,19 @@ export const DisplayManager = {
                 quadAspect.value = quadAspectResponse.includes('full screen') ? '1' : '2';
             }
         }
+    },
+    
+    // Create preview for PBP mode
+    createPreviewPBP() {
+        console.log('Using PBP side-by-side layout with 3/4 and 1/4 split');
+        this.createDisplayWindow(diagram, 1, 'pbp-large');
+        this.createDisplayWindow(diagram, 2, 'pbp-small');
+    },
+    
+    // Create preview for horizontal PBP mode
+    createPreviewPBPHorizontal() {
+        console.log('Using PBP horizontal layout (left/right) 50/50');
+        this.createDisplayWindow(diagram, 1, 'pbp-left');
+        this.createDisplayWindow(diagram, 2, 'pbp-right');
     }
 };

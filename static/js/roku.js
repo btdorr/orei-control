@@ -14,10 +14,27 @@ export const RokuControl = {
     
     // Set up event listeners
     setupEventListeners() {
-        // Roku device discovery button
+        // Configure Roku devices button (opens modal)
+        const configureBtn = document.getElementById('configureRokuBtn');
+        if (configureBtn) {
+            configureBtn.addEventListener('click', () => this.openConfigModal());
+        }
+        
+        // Manage Roku devices button in header (opens modal)
+        const manageBtn = document.getElementById('manageRokuBtn');
+        if (manageBtn) {
+            manageBtn.addEventListener('click', () => this.openConfigModal());
+        }
+        
+        // Roku device discovery buttons (both the hidden one and modal one)
         const discoverBtn = document.getElementById('discoverRokuBtn');
         if (discoverBtn) {
             discoverBtn.addEventListener('click', () => this.discoverDevices());
+        }
+        
+        const discoverBtnModal = document.getElementById('discoverRokuBtnModal');
+        if (discoverBtnModal) {
+            discoverBtnModal.addEventListener('click', () => this.discoverDevices());
         }
         
         // Save mappings button
@@ -28,6 +45,16 @@ export const RokuControl = {
         
         // Refresh Roku remotes when display mode changes
         document.addEventListener('displayModeChanged', () => {
+            this.updateRokuRemotes();
+        });
+        
+        // Refresh Roku remotes when window inputs are loaded/changed
+        document.addEventListener('windowInputsChanged', () => {
+            this.updateRokuRemotes();
+        });
+        
+        // Refresh Roku remotes when device settings are refreshed
+        document.addEventListener('deviceSettingsRefreshed', () => {
             this.updateRokuRemotes();
         });
     },
@@ -45,6 +72,8 @@ export const RokuControl = {
             }
         } catch (error) {
             console.error('Error loading Roku mappings:', error);
+            // Still call updateRokuRemotes to show config prompt
+            this.updateRokuRemotes();
         }
     },
     
@@ -69,7 +98,8 @@ export const RokuControl = {
     
     // Display discovered devices in UI
     displayDiscoveredDevices(devices) {
-        const container = document.getElementById('discoveredDevices');
+        // Use modal container when in modal context
+        const container = document.getElementById('discoveredDevicesModal') || document.getElementById('discoveredDevices');
         if (!container) return;
         
         container.innerHTML = '';
@@ -109,27 +139,32 @@ export const RokuControl = {
     async saveMappings() {
         const mappings = {};
         
-        // Collect mappings from discovery UI
-        const selects = document.querySelectorAll('#discoveredDevices select');
-        selects.forEach(select => {
-            const hdmi = select.value;
-            const ip = select.dataset.deviceIp;
-            
-            if (hdmi && ip) {
-                // Get device info from the card
-                const card = select.closest('.card');
-                const name = card.querySelector('.card-title').textContent;
-                const model = card.querySelector('.card-text').textContent.match(/Model: ([^\n]+)/)?.[1] || 'Unknown';
-                const serial = card.querySelector('.card-text').textContent.match(/Serial: ([^\n]+)/)?.[1] || 'Unknown';
+        // Collect mappings from discovery UI (check modal container first)
+        const modalContainer = document.getElementById('discoveredDevicesModal');
+        const container = modalContainer && modalContainer.offsetParent !== null ? modalContainer : document.getElementById('discoveredDevices');
+        
+        if (container) {
+            const selects = container.querySelectorAll('select');
+            selects.forEach(select => {
+                const hdmi = select.value;
+                const ip = select.dataset.deviceIp;
                 
-                mappings[hdmi] = {
-                    ip: ip,
-                    name: name,
-                    model: model,
-                    serial: serial
-                };
-            }
-        });
+                if (hdmi && ip) {
+                    // Get device info from the card
+                    const card = select.closest('.card');
+                    const name = card.querySelector('.card-title').textContent;
+                    const model = card.querySelector('.card-text').textContent.match(/Model: ([^\n]+)/)?.[1] || 'Unknown';
+                    const serial = card.querySelector('.card-text').textContent.match(/Serial: ([^\n]+)/)?.[1] || 'Unknown';
+                    
+                    mappings[hdmi] = {
+                        ip: ip,
+                        name: name,
+                        model: model,
+                        serial: serial
+                    };
+                }
+            });
+        }
         
         try {
             const response = await fetch('/api/roku/mappings', {
@@ -145,6 +180,12 @@ export const RokuControl = {
                 this.updateMappingUI();
                 this.updateRokuRemotes();
                 Utils.showToast('Roku mappings saved successfully', 'success');
+                
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('rokuConfigModal'));
+                if (modal) {
+                    modal.hide();
+                }
             } else {
                 Utils.showToast(`Failed to save mappings: ${data.error}`, 'danger');
             }
@@ -155,7 +196,8 @@ export const RokuControl = {
     
     // Update mapping UI display
     updateMappingUI() {
-        const container = document.getElementById('currentMappings');
+        // Use modal container when in modal context
+        const container = document.getElementById('currentMappingsModal') || document.getElementById('currentMappings');
         if (!container) return;
         
         container.innerHTML = '';
@@ -203,8 +245,36 @@ export const RokuControl = {
     // Update visible Roku remotes based on display mode
     updateRokuRemotes() {
         const container = document.getElementById('rokuRemotes');
+        const configPrompt = document.getElementById('rokuConfigPrompt');
+        const manageBtn = document.getElementById('manageRokuBtn');
+        const remotesColumn = document.getElementById('rokuRemotesColumn');
+        const deviceManagement = document.getElementById('rokuDeviceManagement');
         if (!container) return;
         
+        // Check if any devices are mapped
+        const hasMappedDevices = Object.keys(this.mappings).length > 0;
+        
+        if (!hasMappedDevices) {
+            // Show configuration prompt, hide remotes and manage button
+            if (configPrompt) configPrompt.style.display = 'block';
+            if (manageBtn) manageBtn.style.display = 'none';
+            if (deviceManagement) deviceManagement.style.display = 'none';
+            if (remotesColumn) {
+                remotesColumn.className = 'col-12'; // Full width when no devices
+            }
+            container.style.display = 'none';
+            return;
+        }
+        
+        // Hide configuration prompt, show remotes and manage button
+        if (configPrompt) configPrompt.style.display = 'none';
+        if (manageBtn) manageBtn.style.display = 'block';
+        if (deviceManagement) deviceManagement.style.display = 'none'; // Keep hidden, use modal
+        if (remotesColumn) {
+            remotesColumn.className = 'col-12'; // Full width for remotes
+        }
+        // Remove the explicit display style to let CSS handle it
+        container.style.display = '';
         container.innerHTML = '';
         
         // Get current display mode and determine which HDMI inputs are visible
@@ -219,8 +289,8 @@ export const RokuControl = {
             }
         });
         
-        // Show "No remotes" message if no devices mapped
-        if (visibleInputs.length === 0 || !visibleInputs.some(hdmi => this.mappings[hdmi])) {
+        // Show "No remotes for current mode" message if no devices mapped for visible inputs
+        if (!visibleInputs.some(hdmi => this.mappings[hdmi])) {
             container.innerHTML = '<p class="text-muted text-center">No Roku devices mapped for current display mode</p>';
         }
     },
@@ -248,7 +318,12 @@ export const RokuControl = {
                     window.oreiApp?.windowInputs?.[3] || 3
                 ];
             case 5: // Quad
-                return [1, 2, 3, 4];
+                return [
+                    window.oreiApp?.windowInputs?.[1] || 1,
+                    window.oreiApp?.windowInputs?.[2] || 2,
+                    window.oreiApp?.windowInputs?.[3] || 3,
+                    window.oreiApp?.windowInputs?.[4] || 4
+                ];
             default:
                 return [1];
         }
@@ -257,7 +332,7 @@ export const RokuControl = {
     // Create Roku remote UI
     createRokuRemote(hdmi, device) {
         const container = document.createElement('div');
-        container.className = 'roku-remote-container col-md-6 col-lg-3 mb-4';
+        container.className = 'col-xl-3 col-lg-4 col-md-6 mb-4';
         
         container.innerHTML = `
             <div class="card roku-remote">
@@ -406,6 +481,29 @@ export const RokuControl = {
         } catch (error) {
             Utils.showToast(`Roku error: ${error.message}`, 'danger');
         }
+    },
+    
+    // Open configuration modal
+    openConfigModal() {
+        const modalElement = document.getElementById('rokuConfigModal');
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // Add event listener to handle focus properly when modal closes (only if not already added)
+        if (!modalElement.hasAttribute('data-focus-handler-added')) {
+            modalElement.setAttribute('data-focus-handler-added', 'true');
+            modalElement.addEventListener('hide.bs.modal', function() {
+                // Remove focus from any element inside the modal before closing
+                const focusedElement = document.activeElement;
+                if (modalElement.contains(focusedElement)) {
+                    focusedElement.blur();
+                }
+            });
+        }
+        
+        modal.show();
+        
+        // Refresh the current mappings display
+        this.updateMappingUI();
     }
 };
 

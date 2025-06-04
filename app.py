@@ -66,10 +66,12 @@ def save_roku_mappings(mappings):
 
 # Discover Roku devices on network
 def discover_roku_devices():
-    """Discover Roku devices using SSDP"""
+    """Discover Roku devices using SSDP and network scanning"""
     devices = []
+    logger.info("Starting Roku device discovery...")
+    
+    # Method 1: SSDP Discovery
     try:
-        # Use ncat to send SSDP discovery
         ssdp_request = (
             "M-SEARCH * HTTP/1.1\r\n"
             "HOST: 239.255.255.250:1900\r\n"
@@ -78,33 +80,48 @@ def discover_roku_devices():
             "MX: 3\r\n\r\n"
         )
         
-        # Send SSDP multicast request
+        # Use nc (netcat) to send SSDP discovery
+        logger.info("Attempting SSDP discovery with netcat...")
         result = subprocess.run([
-            'ncat', '-u', '-w', '5', 
+            'nc', '-u', '-w', '3', 
             '239.255.255.250', '1900'
-        ], input=ssdp_request, text=True, capture_output=True, timeout=10)
+        ], input=ssdp_request, text=True, capture_output=True, timeout=5)
         
-        # Parse responses
-        responses = result.stdout.split('\r\n\r\n')
-        for response in responses:
-            if 'roku:ecp' in response and 'LOCATION:' in response:
-                for line in response.split('\r\n'):
-                    if line.startswith('LOCATION:'):
-                        location = line.split(':', 1)[1].strip()
-                        device_info = get_roku_device_info(location)
-                        if device_info:
-                            devices.append(device_info)
-                        break
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-        # Fallback: scan common Roku ports on local network
+        if result.stdout:
+            logger.info(f"SSDP response received: {len(result.stdout)} bytes")
+            # Parse responses
+            responses = result.stdout.split('\r\n\r\n')
+            for response in responses:
+                if 'roku:ecp' in response and 'LOCATION:' in response:
+                    for line in response.split('\r\n'):
+                        if line.startswith('LOCATION:'):
+                            location = line.split(':', 1)[1].strip()
+                            logger.info(f"Found Roku location: {location}")
+                            device_info = get_roku_device_info(location)
+                            if device_info:
+                                devices.append(device_info)
+                                logger.info(f"Added Roku device: {device_info['name']} at {device_info['ip']}")
+                            break
+        else:
+            logger.info("No SSDP responses received")
+            
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as e:
+        logger.warning(f"SSDP discovery failed: {e}")
+    
+    # Method 2: Direct network scanning if no devices found
+    if not devices:
+        logger.info("SSDP discovery found no devices, trying network scan...")
         devices = scan_roku_devices_fallback()
     
+    logger.info(f"Discovery completed. Found {len(devices)} Roku device(s)")
     return devices
 
 # Fallback Roku discovery method
 def scan_roku_devices_fallback():
     """Fallback method to scan for Roku devices"""
     devices = []
+    logger.info("Starting network scan for Roku devices...")
+    
     try:
         # Get local network range
         result = subprocess.run(['ip', 'route', 'show', 'default'], 
@@ -114,25 +131,48 @@ def scan_roku_devices_fallback():
             gateway = result.stdout.split()[2] if len(result.stdout.split()) > 2 else None
             if gateway:
                 network_base = '.'.join(gateway.split('.')[:-1])
+                logger.info(f"Scanning network range: {network_base}.1-254")
+                
+                # Use threading for faster scanning
+                import threading
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                
+                def check_ip(ip):
+                    return check_roku_device(ip)
                 
                 # Scan common IP range for Roku devices
-                for i in range(1, 255):
-                    ip = f"{network_base}.{i}"
-                    device_info = check_roku_device(ip)
-                    if device_info:
-                        devices.append(device_info)
-                        if len(devices) >= 10:  # Limit to prevent long scans
-                            break
-    except Exception:
-        pass
+                with ThreadPoolExecutor(max_workers=20) as executor:
+                    futures = []
+                    for i in range(1, 255):
+                        ip = f"{network_base}.{i}"
+                        future = executor.submit(check_ip, ip)
+                        futures.append(future)
+                    
+                    for future in as_completed(futures):
+                        try:
+                            device_info = future.result(timeout=1)
+                            if device_info:
+                                devices.append(device_info)
+                                logger.info(f"Found Roku device via scan: {device_info['name']} at {device_info['ip']}")
+                                if len(devices) >= 10:  # Limit to prevent long scans
+                                    break
+                        except Exception as e:
+                            continue
+            else:
+                logger.warning("Could not determine network range from default route")
+        else:
+            logger.warning("Could not get default route information")
+    except Exception as e:
+        logger.error(f"Network scan failed: {e}")
     
+    logger.info(f"Network scan completed. Found {len(devices)} device(s)")
     return devices
 
 # Check if IP has Roku device
 def check_roku_device(ip):
     """Check if given IP has a Roku device"""
     try:
-        response = requests.get(f"http://{ip}:8060/", timeout=2)
+        response = requests.get(f"http://{ip}:8060/", timeout=1)
         if response.status_code == 200 and 'roku' in response.text.lower():
             return get_roku_device_info(f"http://{ip}:8060/")
     except requests.exceptions.RequestException:

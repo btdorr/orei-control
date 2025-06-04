@@ -11,11 +11,23 @@ export const AudioControl = {
     
     // Set up event listeners
     setupEventListeners() {
-        // Audio source
+        // Audio source (both simple and advanced)
         const audioSource = document.getElementById('audioSource');
+        const audioSourceAdvanced = document.getElementById('audioSourceAdvanced');
+        
         if (audioSource) {
             audioSource.addEventListener('change', (e) => {
                 this.setSource(e.target.value);
+                // Sync with advanced selector
+                if (audioSourceAdvanced) audioSourceAdvanced.value = e.target.value;
+            });
+        }
+        
+        if (audioSourceAdvanced) {
+            audioSourceAdvanced.addEventListener('change', (e) => {
+                this.setSource(e.target.value);
+                // Sync with simple selector
+                if (audioSource) audioSource.value = e.target.value;
             });
         }
         
@@ -37,6 +49,22 @@ export const AudioControl = {
             });
         }
         
+        // Volume up button
+        const volumeUpBtn = document.getElementById('volumeUpBtn');
+        if (volumeUpBtn) {
+            volumeUpBtn.addEventListener('click', () => {
+                this.adjustVolume(5);
+            });
+        }
+        
+        // Volume down button
+        const volumeDownBtn = document.getElementById('volumeDownBtn');
+        if (volumeDownBtn) {
+            volumeDownBtn.addEventListener('click', () => {
+                this.adjustVolume(-5);
+            });
+        }
+        
         // Mute switch
         const muteSwitch = document.getElementById('muteSwitch');
         if (muteSwitch) {
@@ -53,7 +81,7 @@ export const AudioControl = {
     
     // Set volume
     async setVolume(volume) {
-        await API.sendCommand(`s output audio vol ${volume}!`);
+        await API.sendCommandSilent(`s output audio vol ${volume}!`);
     },
     
     // Update volume display
@@ -71,42 +99,82 @@ export const AudioControl = {
     
     // Load audio settings from device
     async loadSettings() {
-        const [audioResponse, volResponse, muteResponse] = await Promise.all([
-            API.sendCommandSilent('r output audio!'),
-            API.sendCommandSilent('r output audio vol!'),
-            API.sendCommandSilent('r output audio mute!')
-        ]);
+        // Add a small delay to ensure device is ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Send commands sequentially to avoid RS-232 communication issues
+        const audioResponse = await API.sendCommandSilent('r output audio!');
+        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between commands
+        
+        const volResponse = await API.sendCommandSilent('r output audio vol!');
+        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between commands
+        
+        const muteResponse = await API.sendCommandSilent('r output audio mute!');
         
         // Get audio source
-        if (audioResponse) {
+        if (audioResponse && audioResponse !== 'No response') {
             const audioSource = document.getElementById('audioSource');
-            if (audioSource) {
-                const match = audioResponse.match(/follow window (\d)|HDMI (\d)/);
+            const audioSourceAdvanced = document.getElementById('audioSourceAdvanced');
+            if (audioSource || audioSourceAdvanced) {
+                const match = audioResponse.match(/output audio: (follow window (\d)|HDMI (\d))/);
                 if (match) {
-                    audioSource.value = match[1] ? '0' : match[2];
+                    const value = match[2] ? '0' : match[3];
+                    if (audioSource) audioSource.value = value;
+                    if (audioSourceAdvanced) audioSourceAdvanced.value = value;
                 }
             }
         }
         
-        // Get volume
-        if (volResponse) {
-            const match = volResponse.match(/volume: (\d+)/);
+        // Get volume - retry if no response
+        let volumeValue = null;
+        if (volResponse && volResponse !== 'No response') {
+            const match = volResponse.match(/audio volume: (\d+)/);
             if (match) {
-                const volume = parseInt(match[1]);
-                const volumeSlider = document.getElementById('volumeSlider');
-                if (volumeSlider) {
-                    volumeSlider.value = volume;
-                    this.updateVolumeDisplay(volume);
+                volumeValue = parseInt(match[1]);
+            }
+        } else {
+            // Retry volume command after a delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const retryVolResponse = await API.sendCommandSilent('r output audio vol!');
+            if (retryVolResponse && retryVolResponse !== 'No response') {
+                const match = retryVolResponse.match(/audio volume: (\d+)/);
+                if (match) {
+                    volumeValue = parseInt(match[1]);
                 }
+            }
+        }
+        
+        // Update volume slider if we got a value
+        if (volumeValue !== null) {
+            const volumeSlider = document.getElementById('volumeSlider');
+            if (volumeSlider) {
+                volumeSlider.value = volumeValue;
+                this.updateVolumeDisplay(volumeValue);
             }
         }
         
         // Get mute status
-        if (muteResponse) {
+        if (muteResponse && muteResponse !== 'No response') {
             const muteSwitch = document.getElementById('muteSwitch');
             if (muteSwitch) {
                 muteSwitch.checked = muteResponse.includes('mute: on');
             }
         }
+    },
+    
+    // Adjust volume by delta (positive for up, negative for down)
+    async adjustVolume(delta) {
+        const volumeSlider = document.getElementById('volumeSlider');
+        if (!volumeSlider) return;
+        
+        const currentVolume = parseInt(volumeSlider.value);
+        const newVolume = Math.max(0, Math.min(100, currentVolume + delta));
+        
+        // Update slider and display
+        volumeSlider.value = newVolume;
+        this.updateVolumeDisplay(newVolume);
+        
+        // Send command to device
+        await this.setVolume(newVolume);
     }
 };

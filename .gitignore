@@ -178,4 +178,7 @@ config.local.py
 
 # Temporary files
 tmp/
-temp/ 
+temp/
+
+# Local device configuration files
+roku_devices.json 

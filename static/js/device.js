@@ -32,11 +32,23 @@ export const DeviceControl = {
             refreshBtn.addEventListener('click', () => this.refreshAll());
         }
         
-        // Display mode selector
+        // Display mode selector (both simple and advanced)
         const displayMode = document.getElementById('displayMode');
+        const displayModeAdvanced = document.getElementById('displayModeAdvanced');
+        
         if (displayMode) {
             displayMode.addEventListener('change', async (e) => {
                 await this.setDisplayMode(e.target.value);
+                // Sync with advanced selector
+                if (displayModeAdvanced) displayModeAdvanced.value = e.target.value;
+            });
+        }
+        
+        if (displayModeAdvanced) {
+            displayModeAdvanced.addEventListener('change', async (e) => {
+                await this.setDisplayMode(e.target.value);
+                // Sync with simple selector
+                if (displayMode) displayMode.value = e.target.value;
             });
         }
         
@@ -129,12 +141,28 @@ export const DeviceControl = {
     
     // Check power status
     async checkPowerStatus() {
-        const response = await API.sendCommand('r power!');
-        if (response) {
-            const isOn = response.includes('power on');
-            this.updatePowerStatus(isOn);
-            return isOn;
+        try {
+            const response = await API.sendCommand('r power!');
+            if (response) {
+                const isOn = response.includes('power on');
+                this.updatePowerStatus(isOn);
+                return isOn;
+            } else {
+                // If no response, try once more after a short delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const retryResponse = await API.sendCommand('r power!');
+                if (retryResponse) {
+                    const isOn = retryResponse.includes('power on');
+                    this.updatePowerStatus(isOn);
+                    return isOn;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking power status:', error);
         }
+        
+        // Default to offline if we can't determine status
+        this.updatePowerStatus(false);
         return false;
     },
     
@@ -242,7 +270,9 @@ export const DeviceControl = {
             // Get current mode
             window.oreiApp.currentMode = await this.getDisplayMode();
             const displayMode = document.getElementById('displayMode');
+            const displayModeAdvanced = document.getElementById('displayModeAdvanced');
             if (displayMode) displayMode.value = window.oreiApp.currentMode;
+            if (displayModeAdvanced) displayModeAdvanced.value = window.oreiApp.currentMode;
             
             // Update mode settings and query device for current values
             await DisplayManager.updateModeSettings();
@@ -261,15 +291,19 @@ export const DeviceControl = {
             
             // Show completion message
             Utils.showToast('Device settings refreshed successfully', 'success');
+            
+            // Dispatch event to notify that device settings have been refreshed
+            document.dispatchEvent(new CustomEvent('deviceSettingsRefreshed'));
         }
     },
     
     // Load output settings
     async loadOutputSettings() {
-        const [resResponse, hdcpResponse] = await Promise.all([
-            API.sendCommandSilent('r output res!'),
-            API.sendCommandSilent('r output hdcp!')
-        ]);
+        // Send commands sequentially to avoid RS-232 communication issues
+        const resResponse = await API.sendCommandSilent('r output res!');
+        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between commands
+        
+        const hdcpResponse = await API.sendCommandSilent('r output hdcp!');
         
         // Get resolution
         if (resResponse) {
@@ -300,7 +334,9 @@ export const DeviceControl = {
             if (newMode !== window.oreiApp.currentMode) {
                 window.oreiApp.currentMode = newMode;
                 const displayMode = document.getElementById('displayMode');
+                const displayModeAdvanced = document.getElementById('displayModeAdvanced');
                 if (displayMode) displayMode.value = window.oreiApp.currentMode;
+                if (displayModeAdvanced) displayModeAdvanced.value = window.oreiApp.currentMode;
                 await DisplayManager.updateModeSettings();
                 await DisplayManager.getWindowInputs();
                 DisplayManager.updateDiagram();

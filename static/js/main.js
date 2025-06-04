@@ -39,9 +39,10 @@ async function initialize() {
         await DeviceControl.initialize();
         
         // Set up auto-refresh every 305 seconds
-        window.oreiApp.autoRefreshInterval = setInterval(async () => {
-            await DeviceControl.checkStatus();
-        }, 30000);
+        // DISABLED: Auto-refresh has been disabled per user request
+        // window.oreiApp.autoRefreshInterval = setInterval(async () => {
+        //     await DeviceControl.checkStatus();
+        // }, 30000);
         
         console.log('Orei Control Panel initialized successfully');
     } catch (error) {

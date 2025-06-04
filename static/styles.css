@@ -670,8 +670,8 @@ h1, h2, h3, h4, h5, h6 {
     border: none;
     border-radius: 15px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    max-width: 200px;
-    margin: 0 auto;
+    max-width: 280px;
+    height: fit-content;
 }
 
 .roku-remote .card-header {
@@ -750,11 +750,6 @@ h1, h2, h3, h4, h5, h6 {
     padding: 2px;
 }
 
-.roku-remote-container {
-    display: flex;
-    justify-content: center;
-}
-
 /* Dark theme adjustments for Roku remote */
 [data-theme="dark"] .roku-remote {
     background: linear-gradient(135deg, #1a202c 0%, #0f1419 100%);
@@ -819,10 +814,6 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Responsive adjustments for Roku remotes */
 @media (max-width: 768px) {
-    .roku-remote-container {
-        margin-bottom: 20px;
-    }
-    
     .roku-remote {
         max-width: 180px;
     }
@@ -837,3 +828,155 @@ h1, h2, h3, h4, h5, h6 {
         padding: 10px 6px;
     }
 }
+
+/* Ensure Roku remotes container behaves as Bootstrap row */
+#rokuRemotes {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+}
+
+#rokuRemotes > div {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+}
+
+/* Modal Dark Mode Support */
+.modal-content {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal-header {
+    background-color: var(--card-header-bg);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal-title {
+    color: var(--text-primary);
+}
+
+/* Dark theme modal adjustments */
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-header {
+    background-color: var(--card-header-bg);
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-body {
+    background-color: var(--card-bg);
+}
+
+[data-theme="dark"] .modal-footer {
+    background-color: var(--card-bg);
+    border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Volume Control Styling */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.volume-control .btn {
+    flex-shrink: 0;
+    padding: 0.375rem 0.75rem;
+}
+
+.volume-control .form-range {
+    flex: 1;
+    margin: 0;
+}
+
+/* Tablet Optimization */
+@media (max-width: 1024px) {
+    /* Larger touch targets for tablet */
+    .nav-tabs .nav-link {
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1.25rem;
+    }
+    
+    .form-select-lg {
+        padding: 0.75rem 1rem;
+        font-size: 1.1rem;
+    }
+    
+    /* Better spacing for cards on tablet */
+    .card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+        padding: 1rem 1.25rem;
+        font-size: 1.1rem;
+    }
+    
+    .card-body {
+        padding: 1.25rem;
+    }
+    
+    /* Larger Roku remote buttons for touch */
+    .btn-roku {
+        padding: 12px 8px;
+        font-size: 12px;
+    }
+    
+    .btn-roku-select {
+        padding: 16px 12px;
+        font-size: 14px;
+    }
+    
+    /* Larger volume controls */
+    .volume-control .btn {
+        padding: 0.5rem 1rem;
+        font-size: 1.1rem;
+    }
+}
+
+/* Portrait tablet optimization */
+@media (max-width: 768px) and (orientation: portrait) {
+    .container-fluid {
+        padding: 15px;
+    }
+    
+    /* Stack essential controls vertically on portrait tablet */
+    .col-lg-4.col-xl-3 .card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Ensure Roku remotes are prominent */
+    .roku-remote {
+        max-width: 200px;
+        margin: 0 auto 1rem auto;
+    }
+}
+
