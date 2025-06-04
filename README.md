@@ -2,6 +2,20 @@
 
 A comprehensive web-based control interface for the Orei UHD-401MV HDMI Multiviewer with RS-232 communication and integrated Roku device control.
 
+## Screenshots
+
+### Main Interface - Remote Control Tab
+![Main Interface](docs/screenshots/main-interface.png)
+*Remote control interface with integrated Roku device controls and responsive layout*
+
+### Advanced Settings & Display Preview  
+![Advanced Settings](docs/screenshots/advanced-settings.png)
+*Advanced settings with real-time display mode preview and window input assignment*
+
+### Roku Device Configuration
+![Roku Device Mapping](docs/screenshots/roku-device-mapping.png)
+*Modal-based Roku device discovery and mapping interface*
+
 ## Features
 
 ### Core Device Control
