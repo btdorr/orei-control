@@ -342,5 +342,131 @@ export const DeviceControl = {
                 DisplayManager.updateDiagram();
             }
         }
+    },
+
+    // Setup serial port configuration
+    setupSerialConfig() {
+        this.loadSerialConfig();
+        
+        // Set up event listeners for serial configuration
+        const refreshPortsBtn = document.getElementById('refreshPortsBtn');
+        if (refreshPortsBtn) {
+            refreshPortsBtn.addEventListener('click', () => this.loadSerialConfig());
+        }
+        
+        const serialPortSelect = document.getElementById('serialPortSelect');
+        if (serialPortSelect) {
+            serialPortSelect.addEventListener('change', (e) => {
+                const updateBtn = document.getElementById('updateSerialPortBtn');
+                if (updateBtn) {
+                    updateBtn.disabled = !e.target.value || e.target.value === this.currentSerialPort;
+                }
+            });
+        }
+        
+        const updateSerialPortBtn = document.getElementById('updateSerialPortBtn');
+        if (updateSerialPortBtn) {
+            updateSerialPortBtn.addEventListener('click', () => this.updateSerialPort());
+        }
+    },
+
+    // Load serial port configuration
+    async loadSerialConfig() {
+        try {
+            const response = await fetch('/api/config/serial');
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentSerialPort = data.current_port;
+                
+                // Update UI
+                const currentPortSpan = document.getElementById('currentSerialPort');
+                if (currentPortSpan) currentPortSpan.textContent = data.current_port;
+                
+                const statusBadge = document.getElementById('serialConnectionStatus');
+                if (statusBadge) {
+                    statusBadge.textContent = data.connected ? 'Connected' : 'Disconnected';
+                    statusBadge.className = `badge ${data.connected ? 'bg-success' : 'bg-danger'}`;
+                }
+                
+                // Populate available ports
+                const selectElement = document.getElementById('serialPortSelect');
+                if (selectElement) {
+                    selectElement.innerHTML = '';
+                    
+                    if (data.available_ports && data.available_ports.length > 0) {
+                        data.available_ports.forEach(port => {
+                            const option = document.createElement('option');
+                            option.value = port.device;
+                            option.textContent = `${port.device} - ${port.description}`;
+                            selectElement.appendChild(option);
+                        });
+                        selectElement.value = data.current_port;
+                    } else {
+                        selectElement.innerHTML = '<option value="">No serial ports found</option>';
+                    }
+                }
+                
+                // Update button state
+                const updateBtn = document.getElementById('updateSerialPortBtn');
+                if (updateBtn) {
+                    updateBtn.disabled = true;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load serial configuration:', error);
+            Utils.showToast('Failed to load serial port configuration', 'error');
+        }
+    },
+
+    // Update serial port
+    async updateSerialPort() {
+        const selectElement = document.getElementById('serialPortSelect');
+        if (!selectElement || !selectElement.value) return;
+        
+        const newPort = selectElement.value;
+        
+        try {
+            Utils.showToast('Updating serial port...', 'info');
+            
+            const response = await fetch('/api/config/serial', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    port: newPort
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                Utils.showToast(`Serial port updated to ${newPort}`, 'success');
+                
+                // Reload configuration to update UI
+                await this.loadSerialConfig();
+                
+                // If connection successful, refresh device status
+                if (data.connected) {
+                    setTimeout(() => {
+                        this.checkPowerStatus();
+                    }, 1000);
+                }
+            } else {
+                Utils.showToast(data.error || 'Failed to update serial port', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to update serial port:', error);
+            Utils.showToast('Failed to update serial port', 'error');
+        }
+    }
+};
+
+export const DeviceManager = {
+    // Initialize device controls
+    init() {
+        // Call setupSerialConfig on DeviceControl
+        DeviceControl.setupSerialConfig();
     }
 };

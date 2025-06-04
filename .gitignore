@@ -181,4 +181,5 @@ tmp/
 temp/
 
 # Local device configuration files
-roku_devices.json 
+roku_devices.json
+app_config.json 

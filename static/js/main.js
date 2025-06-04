@@ -2,7 +2,7 @@
 
 import { ThemeManager } from './theme.js';
 import { API } from './api.js';
-import { DeviceControl } from './device.js';
+import { DeviceControl, DeviceManager } from './device.js';
 import { DisplayManager } from './display.js';
 import { AudioControl } from './audio.js';
 import { CommandHistory } from './commands.js';
@@ -34,6 +34,9 @@ async function initialize() {
         
         // Initialize Roku controls
         RokuControl.init();
+        
+        // Initialize device manager for configuration
+        DeviceManager.init();
         
         // Initialize device control and check status
         await DeviceControl.initialize();

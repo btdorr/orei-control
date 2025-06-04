@@ -29,12 +29,46 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
+APP_CONFIG_FILE = 'app_config.json'
+
 class Config:
-    SERIAL_PORT = '/dev/serial0'  # Default Raspberry Pi serial port
-    BAUD_RATE = 115200
-    TIMEOUT = 2
-    COMMAND_DELAY = 0.2  # Increased delay between commands
+    def __init__(self):
+        self.SERIAL_PORT = '/dev/serial0'  # Default Raspberry Pi serial port
+        self.BAUD_RATE = 115200
+        self.TIMEOUT = 2
+        self.COMMAND_DELAY = 0.2  # Increased delay between commands
+        self.load_config()
     
+    def load_config(self):
+        """Load configuration from file"""
+        if os.path.exists(APP_CONFIG_FILE):
+            try:
+                with open(APP_CONFIG_FILE, 'r') as f:
+                    config_data = json.load(f)
+                    self.SERIAL_PORT = config_data.get('serial_port', self.SERIAL_PORT)
+                    self.BAUD_RATE = config_data.get('baud_rate', self.BAUD_RATE)
+                    logger.info(f"Loaded config: serial_port={self.SERIAL_PORT}, baud_rate={self.BAUD_RATE}")
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(f"Failed to load config file: {e}")
+    
+    def save_config(self):
+        """Save configuration to file"""
+        try:
+            config_data = {
+                'serial_port': self.SERIAL_PORT,
+                'baud_rate': self.BAUD_RATE
+            }
+            with open(APP_CONFIG_FILE, 'w') as f:
+                json.dump(config_data, f, indent=2)
+            logger.info(f"Saved config: {config_data}")
+            return True
+        except IOError as e:
+            logger.error(f"Failed to save config file: {e}")
+            return False
+
+# Create global config instance
+config = Config()
+
 # Global variables
 serial_port = None
 serial_lock = threading.Lock()
@@ -212,6 +246,52 @@ def get_roku_device_info(location):
         pass
     return None
 
+# Serial port utilities
+def get_available_serial_ports():
+    """Get list of available serial ports"""
+    ports = []
+    
+    # Add common Linux serial ports
+    common_ports = [
+        '/dev/serial0',   # Raspberry Pi GPIO
+        '/dev/ttyAMA0',   # Raspberry Pi GPIO (alternative)
+        '/dev/ttyS0',     # Standard serial port
+    ]
+    
+    # Add USB serial ports
+    for i in range(8):  # Check USB0 through USB7
+        common_ports.append(f'/dev/ttyUSB{i}')
+    
+    # Check which ports actually exist
+    for port in common_ports:
+        if os.path.exists(port):
+            try:
+                # Try to get port info
+                import serial.tools.list_ports
+                port_info = next((p for p in serial.tools.list_ports.comports() if p.device == port), None)
+                if port_info:
+                    ports.append({
+                        'device': port,
+                        'description': port_info.description,
+                        'manufacturer': getattr(port_info, 'manufacturer', 'Unknown')
+                    })
+                else:
+                    # Port exists but no detailed info available
+                    ports.append({
+                        'device': port,
+                        'description': f'Serial Port ({os.path.basename(port)})',
+                        'manufacturer': 'Unknown'
+                    })
+            except:
+                # Fallback if serial.tools.list_ports fails
+                ports.append({
+                    'device': port,
+                    'description': f'Serial Port ({os.path.basename(port)})',
+                    'manufacturer': 'Unknown'
+                })
+    
+    return ports
+
 # Send ECP command to Roku device
 def send_roku_command(ip, command):
     """Send ECP command to Roku device"""
@@ -254,7 +334,7 @@ def get_roku_apps(ip):
 class SerialManager:
     """Manages serial port communication with the Orei device"""
     
-    def __init__(self, port=Config.SERIAL_PORT, baudrate=Config.BAUD_RATE):
+    def __init__(self, port=config.SERIAL_PORT, baudrate=config.BAUD_RATE):
         self.port = port
         self.baudrate = baudrate
         self.serial_port = None
@@ -269,7 +349,7 @@ class SerialManager:
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
-                timeout=Config.TIMEOUT
+                timeout=config.TIMEOUT
             )
             self.connected = True
             logger.info(f"Connected to serial port {self.port} at {self.baudrate} baud")
@@ -306,13 +386,13 @@ class SerialManager:
                 logger.debug(f"Sent command: {command}")
                 
                 # Wait for response
-                time.sleep(Config.COMMAND_DELAY)
+                time.sleep(config.COMMAND_DELAY)
                 
                 # Read response with improved timeout handling
                 response_lines = []
                 start_time = time.time()
                 
-                while (time.time() - start_time) < Config.TIMEOUT:
+                while (time.time() - start_time) < config.TIMEOUT:
                     if self.serial_port.in_waiting:
                         try:
                             line = self.serial_port.readline().decode('ascii', errors='ignore').strip()
@@ -339,6 +419,23 @@ class SerialManager:
             logger.error(error_msg)
             self.connected = False
             return None, error_msg
+            
+    def update_port(self, new_port):
+        """Update the serial port and reconnect"""
+        try:
+            # Disconnect from current port
+            self.disconnect()
+            
+            # Update port
+            self.port = new_port
+            
+            # Try to reconnect
+            success = self.connect()
+            logger.info(f"Updated serial port to {new_port}, connection {'successful' if success else 'failed'}")
+            return success
+        except Exception as e:
+            logger.error(f"Failed to update serial port: {e}")
+            return False
             
     def _log_command(self, command, response):
         """Log command to history"""
@@ -447,6 +544,70 @@ def clear_history():
         'success': True,
         'message': 'Command history cleared'
     })
+
+# Configuration API endpoints
+@app.route('/api/config/serial', methods=['GET'])
+def get_serial_config():
+    """Get current serial port configuration"""
+    try:
+        available_ports = get_available_serial_ports()
+        return jsonify({
+            'success': True,
+            'current_port': config.SERIAL_PORT,
+            'connected': serial_manager.connected,
+            'available_ports': available_ports
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/config/serial', methods=['POST'])
+def set_serial_config():
+    """Set serial port configuration"""
+    try:
+        data = request.get_json()
+        new_port = data.get('port', '').strip()
+        
+        if not new_port:
+            return jsonify({
+                'success': False,
+                'error': 'Serial port is required'
+            }), 400
+        
+        # Check if port exists
+        if not os.path.exists(new_port):
+            return jsonify({
+                'success': False,
+                'error': f'Serial port {new_port} does not exist'
+            }), 400
+        
+        # Update configuration
+        config.SERIAL_PORT = new_port
+        
+        # Save configuration to file
+        if not config.save_config():
+            return jsonify({
+                'success': False,
+                'error': 'Failed to save configuration'
+            }), 500
+        
+        # Update serial manager
+        connection_success = serial_manager.update_port(new_port)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Serial port updated to {new_port}',
+            'connected': connection_success,
+            'port': new_port
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # Roku API endpoints
 @app.route('/api/roku/discover', methods=['GET'])
