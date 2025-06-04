@@ -114,30 +114,46 @@ def discover_roku_devices():
             "MX: 3\r\n\r\n"
         )
         
-        # Use nc (netcat) to send SSDP discovery
+        # Use nc (netcat) to send SSDP discovery - try multiple netcat locations
         logger.info("Attempting SSDP discovery with netcat...")
-        result = subprocess.run([
-            'nc', '-u', '-w', '3', 
-            '239.255.255.250', '1900'
-        ], input=ssdp_request, text=True, capture_output=True, timeout=5)
+        netcat_paths = ['/usr/bin/nc', '/bin/nc', '/usr/bin/netcat', 'nc']
+        netcat_cmd = None
         
-        if result.stdout:
-            logger.info(f"SSDP response received: {len(result.stdout)} bytes")
-            # Parse responses
-            responses = result.stdout.split('\r\n\r\n')
-            for response in responses:
-                if 'roku:ecp' in response and 'LOCATION:' in response:
-                    for line in response.split('\r\n'):
-                        if line.startswith('LOCATION:'):
-                            location = line.split(':', 1)[1].strip()
-                            logger.info(f"Found Roku location: {location}")
-                            device_info = get_roku_device_info(location)
-                            if device_info:
-                                devices.append(device_info)
-                                logger.info(f"Added Roku device: {device_info['name']} at {device_info['ip']}")
-                            break
+        for nc_path in netcat_paths:
+            try:
+                # Test if command exists
+                result = subprocess.run([nc_path, '-h'], 
+                                      capture_output=True, stderr=subprocess.STDOUT, timeout=1)
+                netcat_cmd = nc_path
+                break
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+        
+        if netcat_cmd:
+            result = subprocess.run([
+                netcat_cmd, '-u', '-w', '3', 
+                '239.255.255.250', '1900'
+            ], input=ssdp_request, text=True, capture_output=True, timeout=5)
+            
+            if result.stdout:
+                logger.info(f"SSDP response received: {len(result.stdout)} bytes")
+                # Parse responses
+                responses = result.stdout.split('\r\n\r\n')
+                for response in responses:
+                    if 'roku:ecp' in response and 'LOCATION:' in response:
+                        for line in response.split('\r\n'):
+                            if line.startswith('LOCATION:'):
+                                location = line.split(':', 1)[1].strip()
+                                logger.info(f"Found Roku location: {location}")
+                                device_info = get_roku_device_info(location)
+                                if device_info:
+                                    devices.append(device_info)
+                                    logger.info(f"Added Roku device: {device_info['name']} at {device_info['ip']}")
+                                break
+            else:
+                logger.info("No SSDP responses received")
         else:
-            logger.info("No SSDP responses received")
+            logger.warning("Netcat command not found in any location")
             
     except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as e:
         logger.warning(f"SSDP discovery failed: {e}")
@@ -157,45 +173,83 @@ def scan_roku_devices_fallback():
     logger.info("Starting network scan for Roku devices...")
     
     try:
-        # Get local network range
-        result = subprocess.run(['ip', 'route', 'show', 'default'], 
-                              capture_output=True, text=True)
-        if result.returncode == 0:
-            # Extract gateway IP to determine network range
-            gateway = result.stdout.split()[2] if len(result.stdout.split()) > 2 else None
-            if gateway:
-                network_base = '.'.join(gateway.split('.')[:-1])
-                logger.info(f"Scanning network range: {network_base}.1-254")
-                
-                # Use threading for faster scanning
-                import threading
-                from concurrent.futures import ThreadPoolExecutor, as_completed
-                
-                def check_ip(ip):
-                    return check_roku_device(ip)
-                
-                # Scan common IP range for Roku devices
-                with ThreadPoolExecutor(max_workers=20) as executor:
-                    futures = []
-                    for i in range(1, 255):
-                        ip = f"{network_base}.{i}"
-                        future = executor.submit(check_ip, ip)
-                        futures.append(future)
+        # Get local network range - try multiple ip command locations
+        ip_paths = ['/usr/sbin/ip', '/sbin/ip', '/bin/ip', 'ip']
+        ip_cmd = None
+        
+        for ip_path in ip_paths:
+            try:
+                # Test if command exists
+                result = subprocess.run([ip_path, 'help'], 
+                                      capture_output=True, stderr=subprocess.STDOUT, timeout=1)
+                ip_cmd = ip_path
+                break
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+        
+        if ip_cmd:
+            result = subprocess.run([ip_cmd, 'route', 'show', 'default'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                # Extract gateway IP to determine network range
+                gateway = result.stdout.split()[2] if len(result.stdout.split()) > 2 else None
+                if gateway:
+                    network_base = '.'.join(gateway.split('.')[:-1])
+                    logger.info(f"Scanning network range: {network_base}.1-254")
                     
-                    for future in as_completed(futures):
-                        try:
-                            device_info = future.result(timeout=1)
+                    # Use threading for faster scanning
+                    import threading
+                    from concurrent.futures import ThreadPoolExecutor, as_completed
+                    
+                    def check_ip(ip):
+                        return check_roku_device(ip)
+                    
+                    # Scan common IP range for Roku devices
+                    with ThreadPoolExecutor(max_workers=20) as executor:
+                        futures = []
+                        for i in range(1, 255):
+                            ip = f"{network_base}.{i}"
+                            future = executor.submit(check_ip, ip)
+                            futures.append(future)
+                        
+                        for future in as_completed(futures):
+                            try:
+                                device_info = future.result(timeout=1)
+                                if device_info:
+                                    devices.append(device_info)
+                                    logger.info(f"Found Roku device via scan: {device_info['name']} at {device_info['ip']}")
+                                    if len(devices) >= 10:  # Limit to prevent long scans
+                                        break
+                            except Exception as e:
+                                continue
+                else:
+                    logger.warning("Could not determine network range from default route")
+            else:
+                logger.warning(f"ip route command failed: {result.stderr}")
+        else:
+            logger.warning("ip command not found, trying fallback method...")
+            # Fallback: try common network ranges
+            common_ranges = ['192.168.1', '192.168.0', '192.168.33', '10.0.0', '172.16.0']
+            for network_base in common_ranges:
+                logger.info(f"Trying network range: {network_base}.1-254")
+                # Quick scan of first 50 IPs in each range
+                for i in range(1, 51):
+                    ip = f"{network_base}.{i}"
+                    device_info = check_roku_device(ip)
+                    if device_info:
+                        devices.append(device_info)
+                        logger.info(f"Found Roku device via fallback scan: {device_info['name']} at {device_info['ip']}")
+                        # Continue scanning this range if we found something
+                        for j in range(51, 255):
+                            ip = f"{network_base}.{j}"
+                            device_info = check_roku_device(ip)
                             if device_info:
                                 devices.append(device_info)
-                                logger.info(f"Found Roku device via scan: {device_info['name']} at {device_info['ip']}")
-                                if len(devices) >= 10:  # Limit to prevent long scans
-                                    break
-                        except Exception as e:
-                            continue
-            else:
-                logger.warning("Could not determine network range from default route")
-        else:
-            logger.warning("Could not get default route information")
+                                logger.info(f"Found Roku device via fallback scan: {device_info['name']} at {device_info['ip']}")
+                        break  # Found devices in this range, stop trying other ranges
+                if devices:  # If we found devices, stop trying other ranges
+                    break
+                    
     except Exception as e:
         logger.error(f"Network scan failed: {e}")
     
