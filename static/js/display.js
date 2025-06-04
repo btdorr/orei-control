@@ -46,14 +46,18 @@ export const DisplayManager = {
                 break;
                 
             case 3: // PBP
-                const pbpMode = window.oreiApp.currentMultiview && window.oreiApp.currentMultiview.includes('PBP');
+                const pbpMode = document.getElementById('pbpMode')?.value || '1';
                 
-                if (pbpMode) {
-                    return this.createPreviewPBP();
+                if (pbpMode === '2') {
+                    // PBP Mode 2 - Window 1 large (75%), Window 2 small (25%)
+                    this.createDisplayWindow(diagram, 1, 'pbp-large'); // 75% width, left side
+                    this.createDisplayWindow(diagram, 2, 'pbp-small'); // 25% width, right side
                 } else {
-                    // Check for horizontal PBP (left/right) mode  
-                    return this.createPreviewPBPHorizontal();
+                    // PBP Mode 1 - Side by side (50/50)
+                    this.createDisplayWindow(diagram, 1, 'pbp-left'); // 50% width, left side
+                    this.createDisplayWindow(diagram, 2, 'pbp-right'); // 50% width, right side
                 }
+                break;
                 
             case 4: // Triple
                 const tripleMode = document.getElementById('tripleMode')?.value || '1';
@@ -78,6 +82,12 @@ export const DisplayManager = {
                     this.createDisplayWindow(diagram, 2, 'quad-stack-top'); // 25% width, top right
                     this.createDisplayWindow(diagram, 3, 'quad-stack-middle'); // 25% width, middle right
                     this.createDisplayWindow(diagram, 4, 'quad-stack-bottom'); // 25% width, bottom right
+                } else if (quadMode === '3') {
+                    // Quad Mode 3 - Windows 1,2,3 stacked left (25% width each), Window 4 large right (75%)
+                    this.createDisplayWindow(diagram, 1, 'quad-left-top'); // 25% width, top left
+                    this.createDisplayWindow(diagram, 2, 'quad-left-middle'); // 25% width, middle left
+                    this.createDisplayWindow(diagram, 3, 'quad-left-bottom'); // 25% width, bottom left
+                    this.createDisplayWindow(diagram, 4, 'quad-right-main'); // 75% width, right side
                 } else {
                     // Quad Mode 1 - 2x2 grid (default)
                     this.createDisplayWindow(diagram, 1, 'quad');
@@ -206,6 +216,16 @@ export const DisplayManager = {
         window.oreiApp.windowInputs[windowNum] = parseInt(input);
         this.updateDiagram();
         Utils.showToast(`Window ${windowNum} set to HDMI ${input}`, 'success');
+        
+        // Hide input selectors and clear selection
+        const inputSelectors = document.getElementById('inputSelectors');
+        if (inputSelectors) inputSelectors.style.display = 'none';
+        
+        // Clear selected window state
+        window.oreiApp.selectedWindow = null;
+        
+        // Remove active class from all windows
+        document.querySelectorAll('.display-window').forEach(el => el.classList.remove('active'));
         
         // Dispatch event to notify that window inputs have changed
         document.dispatchEvent(new CustomEvent('windowInputsChanged'));
@@ -394,19 +414,5 @@ export const DisplayManager = {
                 quadAspect.value = quadAspectResponse.includes('full screen') ? '1' : '2';
             }
         }
-    },
-    
-    // Create preview for PBP mode
-    createPreviewPBP() {
-        console.log('Using PBP side-by-side layout with 3/4 and 1/4 split');
-        this.createDisplayWindow(diagram, 1, 'pbp-large');
-        this.createDisplayWindow(diagram, 2, 'pbp-small');
-    },
-    
-    // Create preview for horizontal PBP mode
-    createPreviewPBPHorizontal() {
-        console.log('Using PBP horizontal layout (left/right) 50/50');
-        this.createDisplayWindow(diagram, 1, 'pbp-left');
-        this.createDisplayWindow(diagram, 2, 'pbp-right');
     }
 };

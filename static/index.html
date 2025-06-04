@@ -146,6 +146,80 @@
                 <div class="row">
                     <!-- Left Column - Advanced Controls -->
                     <div class="col-lg-4">
+                        <!-- Advanced Audio Control -->
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-volume-up me-2"></i>Audio Control
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label">Audio Source</label>
+                                <select class="form-select mb-3" id="audioSourceAdvanced">
+                                    <option value="0">Follow Window 1</option>
+                                    <option value="1">HDMI 1</option>
+                                    <option value="2">HDMI 2</option>
+                                    <option value="3">HDMI 3</option>
+                                    <option value="4">HDMI 4</option>
+                                </select>
+                                
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Volume</span>
+                                    <span id="volumeValue">50</span>
+                                </label>
+                                <div class="volume-control mb-3">
+                                    <button class="btn btn-outline-secondary" type="button" id="volumeDownBtn" title="Volume Down">
+                                        <i class="bi bi-volume-down"></i>
+                                    </button>
+                                    <input type="range" class="form-range" id="volumeSlider" min="0" max="100" value="50">
+                                    <button class="btn btn-outline-secondary" type="button" id="volumeUpBtn" title="Volume Up">
+                                        <i class="bi bi-volume-up"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="muteSwitch">
+                                    <label class="form-check-label" for="muteSwitch">
+                                        Mute Audio
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Output Settings -->
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-gear me-2"></i>Output Settings
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label">Resolution</label>
+                                <select class="form-select mb-3" id="outputResolution">
+                                    <option value="1">4096x2160p60</option>
+                                    <option value="2">4096x2160p50</option>
+                                    <option value="3">3840x2160p60</option>
+                                    <option value="4">3840x2160p50</option>
+                                    <option value="5">3840x2160p30</option>
+                                    <option value="6">3840x2160p25</option>
+                                    <option value="7">1920x1200p60RB</option>
+                                    <option value="8">1920x1080p60</option>
+                                    <option value="9">1920x1080p50</option>
+                                    <option value="10">1360x768p60</option>
+                                    <option value="11">1280x800p60</option>
+                                    <option value="12">1280x720p60</option>
+                                    <option value="13">1280x720p50</option>
+                                    <option value="14">1024x768p60</option>
+                                </select>
+                                
+                                <label class="form-label">HDCP</label>
+                                <select class="form-select" id="outputHDCP">
+                                    <option value="1">HDCP 1.4</option>
+                                    <option value="2">HDCP 2.2</option>
+                                    <option value="3">HDCP OFF</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Middle Column - Display Settings & Preview -->
+                    <div class="col-lg-4">
                         <!-- Advanced Display Mode Settings -->
                         <div class="card">
                             <div class="card-header">
@@ -218,6 +292,7 @@
                                         <select class="form-select mb-3" id="quadMode">
                                             <option value="1">Mode 1</option>
                                             <option value="2">Mode 2</option>
+                                            <option value="3">Mode 3</option>
                                         </select>
                                         <label class="form-label">Aspect Ratio</label>
                                         <select class="form-select" id="quadAspect">
@@ -229,77 +304,35 @@
                             </div>
                         </div>
 
-                        <!-- Advanced Audio Control -->
+                        <!-- Display Preview -->
                         <div class="card">
                             <div class="card-header">
-                                <i class="bi bi-volume-up me-2"></i>Audio Control
+                                <i class="bi bi-display me-2"></i>Display Preview
                             </div>
                             <div class="card-body">
-                                <label class="form-label">Audio Source</label>
-                                <select class="form-select mb-3" id="audioSourceAdvanced">
-                                    <option value="0">Follow Window 1</option>
-                                    <option value="1">HDMI 1</option>
-                                    <option value="2">HDMI 2</option>
-                                    <option value="3">HDMI 3</option>
-                                    <option value="4">HDMI 4</option>
-                                </select>
-                                
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>Volume</span>
-                                    <span id="volumeValue">50</span>
-                                </label>
-                                <div class="volume-control mb-3">
-                                    <button class="btn btn-outline-secondary" type="button" id="volumeDownBtn" title="Volume Down">
-                                        <i class="bi bi-volume-down"></i>
-                                    </button>
-                                    <input type="range" class="form-range" id="volumeSlider" min="0" max="100" value="50">
-                                    <button class="btn btn-outline-secondary" type="button" id="volumeUpBtn" title="Volume Up">
-                                        <i class="bi bi-volume-up"></i>
-                                    </button>
+                                <div class="display-diagram" id="displayDiagram">
+                                    <!-- Dynamic content will be inserted here -->
                                 </div>
-                                
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="muteSwitch">
-                                    <label class="form-check-label" for="muteSwitch">
-                                        Mute Audio
-                                    </label>
+                                <div class="mt-3">
+                                    <p class="text-muted mb-2">Click on a window to select input source</p>
+                                    <div class="row g-2" id="inputSelectors" style="display: none;">
+                                        <div class="col">
+                                            <label class="form-label">Selected Window: <span id="selectedWindow">-</span></label>
+                                            <select class="form-select" id="windowInputSelect">
+                                                <option value="1">HDMI 1</option>
+                                                <option value="2">HDMI 2</option>
+                                                <option value="3">HDMI 3</option>
+                                                <option value="4">HDMI 4</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Output Settings -->
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-gear me-2"></i>Output Settings
-                            </div>
-                            <div class="card-body">
-                                <label class="form-label">Resolution</label>
-                                <select class="form-select mb-3" id="outputResolution">
-                                    <option value="1">4096x2160p60</option>
-                                    <option value="2">4096x2160p50</option>
-                                    <option value="3">3840x2160p60</option>
-                                    <option value="4">3840x2160p50</option>
-                                    <option value="5">3840x2160p30</option>
-                                    <option value="6">3840x2160p25</option>
-                                    <option value="7">1920x1200p60RB</option>
-                                    <option value="8">1920x1080p60</option>
-                                    <option value="9">1920x1080p50</option>
-                                    <option value="10">1360x768p60</option>
-                                    <option value="11">1280x800p60</option>
-                                    <option value="12">1280x720p60</option>
-                                    <option value="13">1280x720p50</option>
-                                    <option value="14">1024x768p60</option>
-                                </select>
-                                
-                                <label class="form-label">HDCP</label>
-                                <select class="form-select" id="outputHDCP">
-                                    <option value="1">HDCP 1.4</option>
-                                    <option value="2">HDCP 2.2</option>
-                                    <option value="3">HDCP OFF</option>
-                                </select>
-                            </div>
-                        </div>
-
+                    <!-- Right Column - Command History & Debug -->
+                    <div class="col-lg-4">
                         <!-- Serial Port Configuration -->
                         <div class="card">
                             <div class="card-header">
@@ -335,38 +368,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Middle Column - Display Diagram -->
-                    <div class="col-lg-4">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                <i class="bi bi-display me-2"></i>Display Preview
-                            </div>
-                            <div class="card-body">
-                                <div class="display-diagram" id="displayDiagram">
-                                    <!-- Dynamic content will be inserted here -->
-                                </div>
-                                <div class="mt-3">
-                                    <p class="text-muted mb-2">Click on a window to select input source</p>
-                                    <div class="row g-2" id="inputSelectors" style="display: none;">
-                                        <div class="col">
-                                            <label class="form-label">Selected Window: <span id="selectedWindow">-</span></label>
-                                            <select class="form-select" id="windowInputSelect">
-                                                <option value="1">HDMI 1</option>
-                                                <option value="2">HDMI 2</option>
-                                                <option value="3">HDMI 3</option>
-                                                <option value="4">HDMI 4</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right Column - Command History & Debug -->
-                    <div class="col-lg-4">
                         <!-- Command History -->
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">

@@ -409,6 +409,35 @@ body {
     right: 0;
 }
 
+/* Quad Mode 3 - Windows 1,2,3 stacked left, Window 4 large right */
+.display-window.quad-left-top {
+    width: 25%;
+    height: 33.33%;
+    top: 0;
+    left: 0;
+}
+
+.display-window.quad-left-middle {
+    width: 25%;
+    height: 33.33%;
+    top: 33.33%;
+    left: 0;
+}
+
+.display-window.quad-left-bottom {
+    width: 25%;
+    height: 33.34%;
+    bottom: 0;
+    left: 0;
+}
+
+.display-window.quad-right-main {
+    width: 75%;
+    height: 100%;
+    top: 0;
+    right: 0;
+}
+
 /* Command history */
 .command-history {
     max-height: 400px;
