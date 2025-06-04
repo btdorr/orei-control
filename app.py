@@ -123,7 +123,7 @@ def discover_roku_devices():
             try:
                 # Test if command exists
                 result = subprocess.run([nc_path, '-h'], 
-                                      capture_output=True, stderr=subprocess.STDOUT, timeout=1)
+                                      capture_output=True, timeout=1)
                 netcat_cmd = nc_path
                 break
             except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -181,7 +181,7 @@ def scan_roku_devices_fallback():
             try:
                 # Test if command exists
                 result = subprocess.run([ip_path, 'help'], 
-                                      capture_output=True, stderr=subprocess.STDOUT, timeout=1)
+                                      capture_output=True, timeout=1)
                 ip_cmd = ip_path
                 break
             except (FileNotFoundError, subprocess.TimeoutExpired):
