@@ -7,6 +7,7 @@ import { DisplayManager } from './display.js';
 import { AudioControl } from './audio.js';
 import { CommandHistory } from './commands.js';
 import { Utils } from './utils.js';
+import { RokuControl } from './roku.js';
 
 // Global application state
 window.oreiApp = {
@@ -31,10 +32,13 @@ async function initialize() {
         // Initialize audio controls
         AudioControl.init();
         
+        // Initialize Roku controls
+        RokuControl.init();
+        
         // Initialize device control and check status
         await DeviceControl.initialize();
         
-        // Set up auto-refresh every 30 seconds
+        // Set up auto-refresh every 305 seconds
         window.oreiApp.autoRefreshInterval = setInterval(async () => {
             await DeviceControl.checkStatus();
         }, 30000);
@@ -70,6 +74,7 @@ window.oreiDebug = {
     CommandHistory,
     ThemeManager,
     Utils,
+    RokuControl,
     getState: () => window.oreiApp,
     sendCommand: (cmd) => API.sendCommand(cmd)
 };

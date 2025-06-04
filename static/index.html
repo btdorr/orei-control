@@ -278,6 +278,59 @@
         </div>
     </div>
 
+    <!-- Roku Control Section -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Roku Device Management -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-tv me-2"></i>Roku Device Management
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <button class="btn btn-primary" id="discoverRokuBtn">
+                                <i class="bi bi-search"></i> Discover Devices
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Current Mappings</h6>
+                            <div id="currentMappings">
+                                <p class="text-muted">No devices mapped</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Discovered Devices</h6>
+                            <div id="discoveredDevices">
+                                <p class="text-muted">Click "Discover Devices" to find Roku devices</p>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-success" id="saveMappingsBtn">
+                            <i class="bi bi-check"></i> Save Mappings
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Roku Remotes -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-controller me-2"></i>Roku Remote Controls
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="rokuRemotes">
+                            <p class="text-muted text-center">No Roku devices mapped for current display mode</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Spinner -->
     <div class="loading-spinner">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">

@@ -221,6 +221,11 @@ export const DeviceControl = {
         // Get window inputs for new mode, then update diagram
         await DisplayManager.getWindowInputs();
         DisplayManager.updateDiagram();
+        
+        // Trigger display mode changed event for Roku remotes
+        document.dispatchEvent(new CustomEvent('displayModeChanged', {
+            detail: { mode: parseInt(mode) }
+        }));
     },
     
     // Refresh all settings
