@@ -202,9 +202,30 @@ export const DeviceControl = {
                 powerBtn.disabled = false;
             }
             
-            // Disable all controls except power
+            // Define elements that should always remain enabled when offline
+            const alwaysEnabledIds = [
+                'powerBtn',              // Power control
+                'refreshBtn',            // Refresh button
+                'sendDebugCmd',          // Debug command input
+                'shutdownMenuItem',      // System shutdown
+                'restartMenuItem',       // System restart
+                'systemDropdown',        // System menu dropdown
+                'advanced-tab',          // Advanced settings tab
+                'remote-tab',            // Remote control tab
+                'themeDropdown',         // Theme selector
+                'serialPortSelect',      // Serial port configuration
+                'refreshPortsBtn',       // Refresh serial ports
+                'serialBaudSelect',      // Serial baud rate
+                'testSerialBtn',         // Test serial connection
+                'saveSerialBtn'          // Save serial configuration
+            ];
+            
+            // Disable device controls but keep system/configuration controls enabled
             document.querySelectorAll('select, input, button').forEach(el => {
-                if (el.id !== 'powerBtn' && el.id !== 'refreshBtn' && el.id !== 'sendDebugCmd') {
+                if (!alwaysEnabledIds.includes(el.id) && 
+                    !el.closest('[data-bs-toggle="dropdown"]') && // Keep dropdown toggles enabled
+                    !el.closest('.dropdown-item') && // Keep dropdown items enabled
+                    !el.classList.contains('nav-link')) { // Keep tab navigation enabled
                     el.disabled = true;
                 }
             });
