@@ -36,6 +36,9 @@
                             <li><a class="dropdown-item text-warning" href="#" id="shutdownMenuItem">
                                 <i class="bi bi-power me-2"></i>Shutdown System
                             </a></li>
+                            <li><a class="dropdown-item text-info" href="#" id="restartMenuItem">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Restart System
+                            </a></li>
                         </ul>
                     </div>
                     <!-- Theme Selector -->
@@ -475,6 +478,63 @@
                     <div id="shutdownActiveActions" style="display: none;">
                         <button type="button" class="btn btn-warning" id="cancelShutdownBtn">
                             <i class="bi bi-x-circle me-2"></i>Cancel Shutdown
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Restart Confirmation Modal -->
+    <div class="modal fade" id="restartModal" tabindex="-1" aria-labelledby="restartModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-info" id="restartModalLabel">
+                        <i class="bi bi-arrow-clockwise me-2"></i>System Restart
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Information:</strong> This will restart the Raspberry Pi host system.
+                    </div>
+                    <p>Are you sure you want to restart the system? This will:</p>
+                    <ul>
+                        <li>Stop the Orei Control Panel service</li>
+                        <li>Restart the Raspberry Pi safely</li>
+                        <li>Automatically bring the system back online</li>
+                    </ul>
+                    <p class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        The system will restart in 1 minute, giving you time to cancel if needed.
+                    </p>
+                    
+                    <!-- Restart status display -->
+                    <div id="restartStatus" style="display: none;">
+                        <div class="alert alert-warning" role="alert">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                                <span id="restartMessage">Restart initiated...</span>
+                            </div>
+                            <div class="mt-2">
+                                <small>Time remaining: <span id="restartCountdown">60</span> seconds</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div id="restartActions">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-info" id="confirmRestartBtn">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Restart System
+                        </button>
+                    </div>
+                    <div id="restartActiveActions" style="display: none;">
+                        <button type="button" class="btn btn-warning" id="cancelRestartBtn">
+                            <i class="bi bi-x-circle me-2"></i>Cancel Restart
                         </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>

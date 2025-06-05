@@ -8,6 +8,8 @@ export class SystemManager {
         this.setupEventListeners();
         this.shutdownTimer = null;
         this.shutdownModal = null;
+        this.restartTimer = null;
+        this.restartModal = null;
     }
     
     static setupEventListeners() {
@@ -20,9 +22,20 @@ export class SystemManager {
             });
         }
         
+        // Restart menu item click
+        const restartMenuItem = document.getElementById('restartMenuItem');
+        if (restartMenuItem) {
+            restartMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showRestartModal();
+            });
+        }
+        
         // Modal event listeners
         const confirmBtn = document.getElementById('confirmShutdownBtn');
         const cancelBtn = document.getElementById('cancelShutdownBtn');
+        const confirmRestartBtn = document.getElementById('confirmRestartBtn');
+        const cancelRestartBtn = document.getElementById('cancelRestartBtn');
         
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
@@ -36,20 +49,47 @@ export class SystemManager {
             });
         }
         
-        // Modal close event
+        if (confirmRestartBtn) {
+            confirmRestartBtn.addEventListener('click', () => {
+                this.initiateRestart();
+            });
+        }
+        
+        if (cancelRestartBtn) {
+            cancelRestartBtn.addEventListener('click', () => {
+                this.cancelRestart();
+            });
+        }
+        
+        // Modal close events
         const shutdownModal = document.getElementById('shutdownModal');
         if (shutdownModal) {
             this.shutdownModal = new bootstrap.Modal(shutdownModal);
             shutdownModal.addEventListener('hidden.bs.modal', () => {
-                this.resetModal();
+                this.resetShutdownModal();
+            });
+        }
+        
+        const restartModal = document.getElementById('restartModal');
+        if (restartModal) {
+            this.restartModal = new bootstrap.Modal(restartModal);
+            restartModal.addEventListener('hidden.bs.modal', () => {
+                this.resetRestartModal();
             });
         }
     }
     
     static showShutdownModal() {
         if (this.shutdownModal) {
-            this.resetModal();
+            this.resetShutdownModal();
             this.shutdownModal.show();
+        }
+    }
+    
+    static showRestartModal() {
+        if (this.restartModal) {
+            this.resetRestartModal();
+            this.restartModal.show();
         }
     }
     
@@ -117,7 +157,7 @@ export class SystemManager {
                 }
                 
                 // Reset modal
-                this.resetModal();
+                this.resetShutdownModal();
                 
                 // Close modal
                 this.shutdownModal.hide();
@@ -193,7 +233,7 @@ export class SystemManager {
         }, 1000);
     }
     
-    static resetModal() {
+    static resetShutdownModal() {
         // Stop any running countdown
         if (this.shutdownTimer) {
             clearInterval(this.shutdownTimer);
@@ -217,5 +257,171 @@ export class SystemManager {
         if (cancelBtn) {
             cancelBtn.style.display = 'inline-block';
         }
+    }
+    
+    static resetRestartModal() {
+        // Stop any running countdown
+        if (this.restartTimer) {
+            clearInterval(this.restartTimer);
+            this.restartTimer = null;
+        }
+        
+        // Reset button states
+        const confirmBtn = document.getElementById('confirmRestartBtn');
+        if (confirmBtn) {
+            confirmBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Restart System';
+            confirmBtn.disabled = false;
+        }
+        
+        // Reset visibility
+        document.getElementById('restartActions').style.display = 'block';
+        document.getElementById('restartActiveActions').style.display = 'none';
+        document.getElementById('restartStatus').style.display = 'none';
+        
+        // Show cancel button again
+        const cancelBtn = document.getElementById('cancelRestartBtn');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-block';
+        }
+    }
+    
+    static async initiateRestart() {
+        try {
+            // Show loading state
+            const confirmBtn = document.getElementById('confirmRestartBtn');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Restarting...';
+            confirmBtn.disabled = true;
+            
+            // Send restart request
+            const response = await fetch('/api/system/restart', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    confirmed: true
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Show restart status
+                this.showRestartStatus(data.message, data.countdown);
+                
+                // Start countdown
+                this.startRestartCountdown(data.countdown);
+                
+                // Show toast notification
+                Utils.showToast('System restart initiated', 'info');
+            } else {
+                throw new Error(data.error || 'Failed to initiate restart');
+            }
+            
+        } catch (error) {
+            console.error('Restart error:', error);
+            Utils.showToast(`Restart failed: ${error.message}`, 'danger');
+            
+            // Reset button
+            const confirmBtn = document.getElementById('confirmRestartBtn');
+            confirmBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Restart System';
+            confirmBtn.disabled = false;
+        }
+    }
+    
+    static async cancelRestart() {
+        try {
+            const response = await fetch('/api/system/restart/cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Stop countdown
+                if (this.restartTimer) {
+                    clearInterval(this.restartTimer);
+                    this.restartTimer = null;
+                }
+                
+                // Reset modal
+                this.resetRestartModal();
+                
+                // Close modal
+                this.restartModal.hide();
+                
+                // Show success message
+                Utils.showToast('System restart cancelled', 'success');
+            } else {
+                throw new Error(data.error || 'Failed to cancel restart');
+            }
+            
+        } catch (error) {
+            console.error('Cancel restart error:', error);
+            Utils.showToast(`Failed to cancel restart: ${error.message}`, 'danger');
+        }
+    }
+    
+    static showRestartStatus(message, countdown) {
+        // Hide initial actions
+        document.getElementById('restartActions').style.display = 'none';
+        
+        // Show restart status
+        const statusDiv = document.getElementById('restartStatus');
+        const messageSpan = document.getElementById('restartMessage');
+        const countdownSpan = document.getElementById('restartCountdown');
+        
+        messageSpan.textContent = message;
+        countdownSpan.textContent = countdown;
+        statusDiv.style.display = 'block';
+        
+        // Show cancel actions
+        document.getElementById('restartActiveActions').style.display = 'block';
+    }
+    
+    static startRestartCountdown(seconds) {
+        let remaining = seconds;
+        
+        this.restartTimer = setInterval(() => {
+            remaining--;
+            
+            const countdownSpan = document.getElementById('restartCountdown');
+            if (countdownSpan) {
+                countdownSpan.textContent = remaining;
+            }
+            
+            // Update message based on time remaining
+            const messageSpan = document.getElementById('restartMessage');
+            if (messageSpan) {
+                if (remaining > 30) {
+                    messageSpan.textContent = 'System restart initiated...';
+                } else if (remaining > 10) {
+                    messageSpan.textContent = 'System will restart soon...';
+                } else if (remaining > 0) {
+                    messageSpan.textContent = 'System is restarting now...';
+                } else {
+                    messageSpan.textContent = 'System is restarting. Please wait...';
+                }
+            }
+            
+            // When countdown reaches 0, stop timer and update UI
+            if (remaining <= 0) {
+                clearInterval(this.restartTimer);
+                this.restartTimer = null;
+                
+                // Hide cancel button since it's too late
+                const cancelBtn = document.getElementById('cancelRestartBtn');
+                if (cancelBtn) {
+                    cancelBtn.style.display = 'none';
+                }
+                
+                // Show final message
+                Utils.showToast('System is restarting...', 'info');
+            }
+        }, 1000);
     }
 } 

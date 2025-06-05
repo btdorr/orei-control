@@ -849,8 +849,8 @@ def system_shutdown():
         # Log the shutdown request
         logger.warning("System shutdown requested via web interface")
         
-        # Send shutdown command with a 10-second delay to allow response
-        subprocess.Popen(['/usr/bin/sudo', '/usr/sbin/shutdown', '-h', '+1', 'Shutdown requested from Orei Control Panel'])
+        # Send shutdown command with a 1-minute delay to allow response
+        subprocess.Popen(['sudo', 'shutdown', '-h', '+1', 'Shutdown requested from Orei Control Panel'])
         
         return jsonify({
             'success': True,
@@ -870,7 +870,7 @@ def cancel_shutdown():
     """Cancel a pending system shutdown"""
     try:
         # Cancel any pending shutdown
-        subprocess.run(['/usr/bin/sudo', '/usr/sbin/shutdown', '-c'], check=True)
+        subprocess.run(['sudo', 'shutdown', '-c'], check=True)
         
         logger.info("System shutdown cancelled via web interface")
         
@@ -889,6 +889,64 @@ def cancel_shutdown():
         return jsonify({
             'success': False,
             'error': f'Failed to cancel shutdown: {str(e)}'
+        }), 500
+
+@app.route('/api/system/restart', methods=['POST'])
+def system_restart():
+    """Restart the Raspberry Pi system"""
+    try:
+        data = request.get_json()
+        confirmation = data.get('confirmed', False)
+        
+        if not confirmation:
+            return jsonify({
+                'success': False,
+                'error': 'Restart confirmation required'
+            }), 400
+        
+        # Log the restart request
+        logger.warning("System restart requested via web interface")
+        
+        # Send restart command with a 1-minute delay to allow response
+        subprocess.Popen(['sudo', 'shutdown', '-r', '+1', 'Restart requested from Orei Control Panel'])
+        
+        return jsonify({
+            'success': True,
+            'message': 'System restart initiated. The device will restart in 1 minute.',
+            'countdown': 60
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to initiate system restart: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to initiate restart: {str(e)}'
+        }), 500
+
+@app.route('/api/system/restart/cancel', methods=['POST'])
+def cancel_restart():
+    """Cancel a pending system restart"""
+    try:
+        # Cancel any pending restart (same as shutdown cancel)
+        subprocess.run(['sudo', 'shutdown', '-c'], check=True)
+        
+        logger.info("System restart cancelled via web interface")
+        
+        return jsonify({
+            'success': True,
+            'message': 'System restart cancelled'
+        })
+        
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            'success': False,
+            'error': 'No pending restart to cancel'
+        }), 400
+    except Exception as e:
+        logger.error(f"Failed to cancel system restart: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to cancel restart: {str(e)}'
         }), 500
 
 # Error handlers
