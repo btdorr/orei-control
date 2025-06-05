@@ -7,6 +7,7 @@ export const DisplayManager = {
     // Initialize display controls
     init() {
         this.setupEventListeners();
+        this.updateWindowInputControls(); // Initialize window input controls
     },
     
     // Set up event listeners
@@ -20,6 +21,11 @@ export const DisplayManager = {
                 }
             });
         }
+        
+        // Listen for window inputs changes to update controls
+        document.addEventListener('windowInputsChanged', () => {
+            this.updateWindowInputControls();
+        });
     },
     
     // Update display diagram based on current mode and settings
@@ -283,8 +289,9 @@ export const DisplayManager = {
     },
     
     // Get number of windows for current mode
-    getWindowCount() {
-        switch (window.oreiApp.currentMode) {
+    getWindowCount(mode = null) {
+        const currentMode = mode || window.oreiApp.currentMode;
+        switch (currentMode) {
             case 1: return 1;  // Single
             case 2: return 2;  // PIP
             case 3: return 2;  // PBP
@@ -321,6 +328,9 @@ export const DisplayManager = {
                 await this.loadQuadSettings();
                 break;
         }
+        
+        // Update window input controls for the new mode
+        this.updateWindowInputControls();
         
         // Don't update diagram here - let it be called after windowInputs are loaded
         // this.updateDiagram();
@@ -413,6 +423,51 @@ export const DisplayManager = {
             if (quadAspect) {
                 quadAspect.value = quadAspectResponse.includes('full screen') ? '1' : '2';
             }
+        }
+    },
+    
+    // Update window input controls based on current display mode
+    updateWindowInputControls() {
+        const container = document.getElementById('windowInputControls');
+        if (!container) return;
+        
+        // Clear existing controls
+        container.innerHTML = '';
+        
+        const currentMode = window.oreiApp?.currentMode || 1;
+        const windowCount = this.getWindowCount(currentMode);
+        
+        // Create input dropdowns for each window
+        for (let i = 1; i <= windowCount; i++) {
+            const controlGroup = document.createElement('div');
+            controlGroup.className = 'mb-3';
+            
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.textContent = `Window ${i} Input`;
+            
+            const select = document.createElement('select');
+            select.className = 'form-select';
+            select.id = `windowInput${i}`;
+            select.innerHTML = `
+                <option value="1">HDMI 1</option>
+                <option value="2">HDMI 2</option>
+                <option value="3">HDMI 3</option>
+                <option value="4">HDMI 4</option>
+            `;
+            
+            // Set current value
+            const currentInput = window.oreiApp?.windowInputs?.[i] || i;
+            select.value = currentInput;
+            
+            // Add event listener
+            select.addEventListener('change', async (e) => {
+                await this.setWindowInput(i, e.target.value);
+            });
+            
+            controlGroup.appendChild(label);
+            controlGroup.appendChild(select);
+            container.appendChild(controlGroup);
         }
     }
 };
