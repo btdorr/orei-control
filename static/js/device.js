@@ -269,6 +269,10 @@ export const DeviceControl = {
         
         // Get window inputs for new mode, then update diagram
         await DisplayManager.getWindowInputs();
+        
+        // Update window input controls after window inputs are loaded
+        DisplayManager.updateWindowInputControls();
+        
         DisplayManager.updateDiagram();
         
         // Trigger display mode changed event for Roku remotes
@@ -300,6 +304,9 @@ export const DeviceControl = {
             
             // Get window inputs
             await DisplayManager.getWindowInputs();
+            
+            // Update window input controls after window inputs are loaded
+            DisplayManager.updateWindowInputControls();
             
             // Now update the diagram after windowInputs are loaded
             DisplayManager.updateDiagram();
@@ -360,6 +367,10 @@ export const DeviceControl = {
                 if (displayModeAdvanced) displayModeAdvanced.value = window.oreiApp.currentMode;
                 await DisplayManager.updateModeSettings();
                 await DisplayManager.getWindowInputs();
+                
+                // Update window input controls after window inputs are loaded
+                DisplayManager.updateWindowInputControls();
+                
                 DisplayManager.updateDiagram();
             }
         }

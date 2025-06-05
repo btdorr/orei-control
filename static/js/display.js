@@ -329,8 +329,8 @@ export const DisplayManager = {
                 break;
         }
         
-        // Update window input controls for the new mode
-        this.updateWindowInputControls();
+        // Note: updateWindowInputControls() is now called after window inputs are loaded
+        // in the setDisplayMode function for proper timing
         
         // Don't update diagram here - let it be called after windowInputs are loaded
         // this.updateDiagram();
