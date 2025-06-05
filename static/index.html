@@ -77,55 +77,41 @@
                 <div class="row">
                     <!-- Essential Controls -->
                     <div class="col-lg-4 col-xl-3">
-                        <!-- Power Control -->
+                        <!-- Primary Controls -->
                         <div class="card">
                             <div class="card-header">
-                                <i class="bi bi-power me-2"></i>Power Control
+                                <i class="bi bi-sliders me-2"></i>Primary Controls
                             </div>
                             <div class="card-body">
-                                <div class="d-grid">
+                                <!-- Power Control -->
+                                <label class="form-label">Power Control</label>
+                                <div class="d-grid mb-3">
                                     <button class="btn btn-lg btn-danger" id="powerBtn" disabled>
                                         <i class="bi bi-power"></i> Power Off
                                     </button>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Display Mode -->
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-grid-3x3-gap me-2"></i>Display Mode
-                            </div>
-                            <div class="card-body">
-                                <select class="form-select form-select-lg" id="displayMode">
+                                <!-- Display Mode -->
+                                <label class="form-label">Display Mode</label>
+                                <select class="form-select mb-3" id="displayMode">
                                     <option value="1">Single Screen</option>
                                     <option value="2">PIP (Picture-in-Picture)</option>
                                     <option value="3">PBP (Picture-by-Picture)</option>
                                     <option value="4">Triple Screen</option>
                                     <option value="5">Quad Screen</option>
                                 </select>
-                            </div>
-                        </div>
 
-                        <!-- Window Input Sources -->
-                        <div class="card" id="windowInputCard">
-                            <div class="card-header">
-                                <i class="bi bi-input-cursor me-2"></i>Window Input Sources
-                            </div>
-                            <div class="card-body">
-                                <div id="windowInputControls">
-                                    <!-- Dynamic input source dropdowns will be added here -->
+                                <!-- Window Input Sources -->
+                                <div id="windowInputSection">
+                                    <label class="form-label">Window Input Sources</label>
+                                    <div id="windowInputControls" class="mb-3">
+                                        <!-- Dynamic input source dropdowns will be added here -->
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Audio Source -->
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-volume-up me-2"></i>Audio Source
-                            </div>
-                            <div class="card-body">
-                                <select class="form-select form-select-lg" id="audioSource">
+                                <!-- Audio Source -->
+                                <label class="form-label">Audio Source</label>
+                                <select class="form-select" id="audioSource">
                                     <option value="0">Follow Window 1</option>
                                     <option value="1">HDMI 1</option>
                                     <option value="2">HDMI 2</option>

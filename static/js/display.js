@@ -440,14 +440,14 @@ export const DisplayManager = {
         // Create input dropdowns for each window
         for (let i = 1; i <= windowCount; i++) {
             const controlGroup = document.createElement('div');
-            controlGroup.className = 'mb-3';
+            controlGroup.className = 'mb-2'; // Reduced margin for compact layout
             
             const label = document.createElement('label');
-            label.className = 'form-label';
-            label.textContent = `Window ${i} Input`;
+            label.className = 'form-label small'; // Smaller label for compact layout
+            label.textContent = `Window ${i}`;
             
             const select = document.createElement('select');
-            select.className = 'form-select';
+            select.className = 'form-select form-select-sm'; // Smaller select for compact layout
             select.id = `windowInput${i}`;
             select.innerHTML = `
                 <option value="1">HDMI 1</option>

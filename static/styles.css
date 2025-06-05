@@ -1102,3 +1102,42 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
+/* Primary controls compact layout */
+.card .form-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.card .form-label.small {
+    font-size: 0.75rem;
+    margin-bottom: 0.15rem;
+}
+
+#windowInputSection {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+#windowInputSection:empty {
+    display: none;
+}
+
+#windowInputControls .mb-2:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Spacing adjustments for compact layout */
+.card-body > .mb-3:last-child {
+    margin-bottom: 0 !important;
+}
+
+.btn-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+}
+
+/* Volume control */
+
