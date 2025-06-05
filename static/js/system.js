@@ -15,22 +15,16 @@ export class SystemManager {
     };
     
     static init() {
-        console.log('SystemManager.init() called');
         SystemManager.setupEventListeners();
         SystemManager.timers.shutdown = null;
         SystemManager.timers.restart = null;
-        console.log('SystemManager initialization complete');
     }
     
     static setupEventListeners() {
-        console.log('SystemManager.setupEventListeners() called');
-        
         // System menu item click
         const shutdownMenuItem = document.getElementById('shutdownMenuItem');
-        console.log('shutdownMenuItem found:', !!shutdownMenuItem);
         if (shutdownMenuItem) {
             shutdownMenuItem.addEventListener('click', (e) => {
-                console.log('Shutdown menu item clicked');
                 e.preventDefault();
                 SystemManager.showShutdownModal();
             });
@@ -38,10 +32,8 @@ export class SystemManager {
         
         // Restart menu item click
         const restartMenuItem = document.getElementById('restartMenuItem');
-        console.log('restartMenuItem found:', !!restartMenuItem);
         if (restartMenuItem) {
             restartMenuItem.addEventListener('click', (e) => {
-                console.log('Restart menu item clicked');
                 e.preventDefault();
                 SystemManager.showRestartModal();
             });
@@ -79,11 +71,9 @@ export class SystemManager {
         
         // Modal close events
         const shutdownModal = document.getElementById('shutdownModal');
-        console.log('shutdownModal element found:', !!shutdownModal);
         if (shutdownModal) {
             try {
                 SystemManager.modals.shutdown = new bootstrap.Modal(shutdownModal);
-                console.log('Bootstrap shutdownModal created:', SystemManager.modals.shutdown);
                 shutdownModal.addEventListener('hidden.bs.modal', () => {
                     SystemManager.resetShutdownModal();
                 });
@@ -93,12 +83,9 @@ export class SystemManager {
         }
         
         const restartModal = document.getElementById('restartModal');
-        console.log('restartModal element found:', !!restartModal);
         if (restartModal) {
             try {
                 SystemManager.modals.restart = new bootstrap.Modal(restartModal);
-                console.log('Bootstrap restartModal created:', SystemManager.modals.restart);
-                console.log('Checking SystemManager.modals.restart immediately after creation:', SystemManager.modals.restart);
                 restartModal.addEventListener('hidden.bs.modal', () => {
                     SystemManager.resetRestartModal();
                 });
@@ -106,15 +93,9 @@ export class SystemManager {
                 console.error('Error creating restart modal:', error);
             }
         }
-        
-        // Final check of modal references after setup
-        console.log('Final modal check - shutdownModal:', SystemManager.modals.shutdown);
-        console.log('Final modal check - restartModal:', SystemManager.modals.restart);
     }
     
     static showShutdownModal() {
-        console.log('showShutdownModal() called');
-        console.log('shutdownModal:', SystemManager.modals.shutdown);
         if (SystemManager.modals.shutdown) {
             SystemManager.resetShutdownModal();
             SystemManager.modals.shutdown.show();
@@ -124,10 +105,6 @@ export class SystemManager {
     }
     
     static showRestartModal() {
-        console.log('showRestartModal() called');
-        console.log('Checking all SystemManager properties:', Object.getOwnPropertyNames(SystemManager));
-        console.log('SystemManager.modals.restart at call time:', SystemManager.modals.restart);
-        console.log('typeof SystemManager.modals.restart:', typeof SystemManager.modals.restart);
         if (SystemManager.modals.restart) {
             SystemManager.resetRestartModal();
             SystemManager.modals.restart.show();
