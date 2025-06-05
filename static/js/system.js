@@ -7,10 +7,10 @@ export class SystemManager {
     static init() {
         console.log('SystemManager.init() called');
         this.setupEventListeners();
-        this.shutdownTimer = null;
-        this.shutdownModal = null;
-        this.restartTimer = null;
-        this.restartModal = null;
+        SystemManager.shutdownTimer = null;
+        SystemManager.shutdownModal = null;
+        SystemManager.restartTimer = null;
+        SystemManager.restartModal = null;
         console.log('SystemManager initialization complete');
     }
     
@@ -73,30 +73,38 @@ export class SystemManager {
         const shutdownModal = document.getElementById('shutdownModal');
         console.log('shutdownModal element found:', !!shutdownModal);
         if (shutdownModal) {
-            this.shutdownModal = new bootstrap.Modal(shutdownModal);
-            console.log('Bootstrap shutdownModal created:', this.shutdownModal);
-            shutdownModal.addEventListener('hidden.bs.modal', () => {
-                this.resetShutdownModal();
-            });
+            try {
+                SystemManager.shutdownModal = new bootstrap.Modal(shutdownModal);
+                console.log('Bootstrap shutdownModal created:', SystemManager.shutdownModal);
+                shutdownModal.addEventListener('hidden.bs.modal', () => {
+                    SystemManager.resetShutdownModal();
+                });
+            } catch (error) {
+                console.error('Error creating shutdown modal:', error);
+            }
         }
         
         const restartModal = document.getElementById('restartModal');
         console.log('restartModal element found:', !!restartModal);
         if (restartModal) {
-            this.restartModal = new bootstrap.Modal(restartModal);
-            console.log('Bootstrap restartModal created:', this.restartModal);
-            restartModal.addEventListener('hidden.bs.modal', () => {
-                this.resetRestartModal();
-            });
+            try {
+                SystemManager.restartModal = new bootstrap.Modal(restartModal);
+                console.log('Bootstrap restartModal created:', SystemManager.restartModal);
+                restartModal.addEventListener('hidden.bs.modal', () => {
+                    SystemManager.resetRestartModal();
+                });
+            } catch (error) {
+                console.error('Error creating restart modal:', error);
+            }
         }
     }
     
     static showShutdownModal() {
         console.log('showShutdownModal() called');
-        console.log('shutdownModal:', this.shutdownModal);
-        if (this.shutdownModal) {
-            this.resetShutdownModal();
-            this.shutdownModal.show();
+        console.log('shutdownModal:', SystemManager.shutdownModal);
+        if (SystemManager.shutdownModal) {
+            SystemManager.resetShutdownModal();
+            SystemManager.shutdownModal.show();
         } else {
             console.error('shutdownModal is not initialized!');
         }
@@ -104,10 +112,10 @@ export class SystemManager {
     
     static showRestartModal() {
         console.log('showRestartModal() called');
-        console.log('restartModal:', this.restartModal);
-        if (this.restartModal) {
-            this.resetRestartModal();
-            this.restartModal.show();
+        console.log('restartModal:', SystemManager.restartModal);
+        if (SystemManager.restartModal) {
+            SystemManager.resetRestartModal();
+            SystemManager.restartModal.show();
         } else {
             console.error('restartModal is not initialized!');
         }
@@ -171,16 +179,16 @@ export class SystemManager {
             
             if (data.success) {
                 // Stop countdown
-                if (this.shutdownTimer) {
-                    clearInterval(this.shutdownTimer);
-                    this.shutdownTimer = null;
+                if (SystemManager.shutdownTimer) {
+                    clearInterval(SystemManager.shutdownTimer);
+                    SystemManager.shutdownTimer = null;
                 }
                 
                 // Reset modal
                 this.resetShutdownModal();
                 
                 // Close modal
-                this.shutdownModal.hide();
+                SystemManager.shutdownModal.hide();
                 
                 // Show success message
                 Utils.showToast('System shutdown cancelled', 'success');
@@ -214,7 +222,7 @@ export class SystemManager {
     static startCountdown(seconds) {
         let remaining = seconds;
         
-        this.shutdownTimer = setInterval(() => {
+        SystemManager.shutdownTimer = setInterval(() => {
             remaining--;
             
             const countdownSpan = document.getElementById('shutdownCountdown');
@@ -238,8 +246,8 @@ export class SystemManager {
             
             // When countdown reaches 0, stop timer and update UI
             if (remaining <= 0) {
-                clearInterval(this.shutdownTimer);
-                this.shutdownTimer = null;
+                clearInterval(SystemManager.shutdownTimer);
+                SystemManager.shutdownTimer = null;
                 
                 // Hide cancel button since it's too late
                 const cancelBtn = document.getElementById('cancelShutdownBtn');
@@ -255,9 +263,9 @@ export class SystemManager {
     
     static resetShutdownModal() {
         // Stop any running countdown
-        if (this.shutdownTimer) {
-            clearInterval(this.shutdownTimer);
-            this.shutdownTimer = null;
+        if (SystemManager.shutdownTimer) {
+            clearInterval(SystemManager.shutdownTimer);
+            SystemManager.shutdownTimer = null;
         }
         
         // Reset button states
@@ -281,9 +289,9 @@ export class SystemManager {
     
     static resetRestartModal() {
         // Stop any running countdown
-        if (this.restartTimer) {
-            clearInterval(this.restartTimer);
-            this.restartTimer = null;
+        if (SystemManager.restartTimer) {
+            clearInterval(SystemManager.restartTimer);
+            SystemManager.restartTimer = null;
         }
         
         // Reset button states
@@ -363,16 +371,16 @@ export class SystemManager {
             
             if (data.success) {
                 // Stop countdown
-                if (this.restartTimer) {
-                    clearInterval(this.restartTimer);
-                    this.restartTimer = null;
+                if (SystemManager.restartTimer) {
+                    clearInterval(SystemManager.restartTimer);
+                    SystemManager.restartTimer = null;
                 }
                 
                 // Reset modal
                 this.resetRestartModal();
                 
                 // Close modal
-                this.restartModal.hide();
+                SystemManager.restartModal.hide();
                 
                 // Show success message
                 Utils.showToast('System restart cancelled', 'success');
@@ -406,7 +414,7 @@ export class SystemManager {
     static startRestartCountdown(seconds) {
         let remaining = seconds;
         
-        this.restartTimer = setInterval(() => {
+        SystemManager.restartTimer = setInterval(() => {
             remaining--;
             
             const countdownSpan = document.getElementById('restartCountdown');
@@ -430,8 +438,8 @@ export class SystemManager {
             
             // When countdown reaches 0, stop timer and update UI
             if (remaining <= 0) {
-                clearInterval(this.restartTimer);
-                this.restartTimer = null;
+                clearInterval(SystemManager.restartTimer);
+                SystemManager.restartTimer = null;
                 
                 // Hide cancel button since it's too late
                 const cancelBtn = document.getElementById('cancelRestartBtn');
