@@ -850,7 +850,7 @@ def system_shutdown():
         logger.warning("System shutdown requested via web interface")
         
         # Send shutdown command with a 1-minute delay to allow response
-        subprocess.Popen(['sudo', 'shutdown', '-h', '+1', 'Shutdown requested from Orei Control Panel'])
+        subprocess.Popen(['/usr/bin/sudo', '/usr/sbin/shutdown', '-h', '+1', 'Shutdown requested from Orei Control Panel'])
         
         return jsonify({
             'success': True,
@@ -870,7 +870,7 @@ def cancel_shutdown():
     """Cancel a pending system shutdown"""
     try:
         # Cancel any pending shutdown
-        subprocess.run(['sudo', 'shutdown', '-c'], check=True)
+        subprocess.run(['/usr/bin/sudo', '/usr/sbin/shutdown', '-c'], check=True)
         
         logger.info("System shutdown cancelled via web interface")
         
@@ -908,7 +908,7 @@ def system_restart():
         logger.warning("System restart requested via web interface")
         
         # Send restart command with a 1-minute delay to allow response
-        subprocess.Popen(['sudo', 'shutdown', '-r', '+1', 'Restart requested from Orei Control Panel'])
+        subprocess.Popen(['/usr/bin/sudo', '/usr/sbin/shutdown', '-r', '+1', 'Restart requested from Orei Control Panel'])
         
         return jsonify({
             'success': True,
@@ -928,7 +928,7 @@ def cancel_restart():
     """Cancel a pending system restart"""
     try:
         # Cancel any pending restart (same as shutdown cancel)
-        subprocess.run(['sudo', 'shutdown', '-c'], check=True)
+        subprocess.run(['/usr/bin/sudo', '/usr/sbin/shutdown', '-c'], check=True)
         
         logger.info("System restart cancelled via web interface")
         
