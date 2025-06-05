@@ -6,7 +6,7 @@ import { Utils } from './utils.js';
 export class SystemManager {
     static init() {
         console.log('SystemManager.init() called');
-        this.setupEventListeners();
+        SystemManager.setupEventListeners();
         SystemManager.shutdownTimer = null;
         SystemManager.restartTimer = null;
         console.log('SystemManager initialization complete');
@@ -22,7 +22,7 @@ export class SystemManager {
             shutdownMenuItem.addEventListener('click', (e) => {
                 console.log('Shutdown menu item clicked');
                 e.preventDefault();
-                this.showShutdownModal();
+                SystemManager.showShutdownModal();
             });
         }
         
@@ -33,7 +33,7 @@ export class SystemManager {
             restartMenuItem.addEventListener('click', (e) => {
                 console.log('Restart menu item clicked');
                 e.preventDefault();
-                this.showRestartModal();
+                SystemManager.showRestartModal();
             });
         }
         
@@ -45,25 +45,25 @@ export class SystemManager {
         
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
-                this.initiateShutdown();
+                SystemManager.initiateShutdown();
             });
         }
         
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
-                this.cancelShutdown();
+                SystemManager.cancelShutdown();
             });
         }
         
         if (confirmRestartBtn) {
             confirmRestartBtn.addEventListener('click', () => {
-                this.initiateRestart();
+                SystemManager.initiateRestart();
             });
         }
         
         if (cancelRestartBtn) {
             cancelRestartBtn.addEventListener('click', () => {
-                this.cancelRestart();
+                SystemManager.cancelRestart();
             });
         }
         
@@ -142,10 +142,10 @@ export class SystemManager {
             
             if (data.success) {
                 // Show shutdown status
-                this.showShutdownStatus(data.message, data.countdown);
+                SystemManager.showShutdownStatus(data.message, data.countdown);
                 
                 // Start countdown
-                this.startCountdown(data.countdown);
+                SystemManager.startCountdown(data.countdown);
                 
                 // Show toast notification
                 Utils.showToast('System shutdown initiated', 'warning');
@@ -183,7 +183,7 @@ export class SystemManager {
                 }
                 
                 // Reset modal
-                this.resetShutdownModal();
+                SystemManager.resetShutdownModal();
                 
                 // Close modal
                 SystemManager.shutdownModal.hide();
@@ -334,10 +334,10 @@ export class SystemManager {
             
             if (data.success) {
                 // Show restart status
-                this.showRestartStatus(data.message, data.countdown);
+                SystemManager.showRestartStatus(data.message, data.countdown);
                 
                 // Start countdown
-                this.startRestartCountdown(data.countdown);
+                SystemManager.startRestartCountdown(data.countdown);
                 
                 // Show toast notification
                 Utils.showToast('System restart initiated', 'info');
@@ -375,7 +375,7 @@ export class SystemManager {
                 }
                 
                 // Reset modal
-                this.resetRestartModal();
+                SystemManager.resetRestartModal();
                 
                 // Close modal
                 SystemManager.restartModal.hide();
