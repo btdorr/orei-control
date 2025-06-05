@@ -8,9 +8,7 @@ export class SystemManager {
         console.log('SystemManager.init() called');
         this.setupEventListeners();
         SystemManager.shutdownTimer = null;
-        SystemManager.shutdownModal = null;
         SystemManager.restartTimer = null;
-        SystemManager.restartModal = null;
         console.log('SystemManager initialization complete');
     }
     
