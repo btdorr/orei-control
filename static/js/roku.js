@@ -475,16 +475,10 @@ export const RokuControl = {
             
             const data = await response.json();
             
-            if (data.success) {
-                // Get device name for better user feedback
-                const device = this.mappings[hdmi];
-                const deviceName = device ? device.name : `HDMI ${hdmi}`;
-                
-                // Show success toast for user feedback
-                Utils.showToast(`${command} sent to ${deviceName}`, 'success');
-            } else {
+            if (!data.success) {
                 Utils.showToast(`Roku command failed: ${data.error || 'Unknown error'}`, 'danger');
             }
+            // No success toast - commands work silently when successful
         } catch (error) {
             Utils.showToast(`Roku error: ${error.message || 'Network error'}`, 'danger');
         }
