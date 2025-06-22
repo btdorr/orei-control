@@ -6,7 +6,8 @@ import { Utils } from './utils.js';
 export class SystemManager {
     static modals = {
         shutdown: null,
-        restart: null
+        restart: null,
+        update: null
     };
     
     static timers = {
@@ -39,11 +40,21 @@ export class SystemManager {
             });
         }
         
+        // Update menu item click
+        const updateMenuItem = document.getElementById('updateMenuItem');
+        if (updateMenuItem) {
+            updateMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                SystemManager.showUpdateModal();
+            });
+        }
+        
         // Modal event listeners
         const confirmBtn = document.getElementById('confirmShutdownBtn');
         const cancelBtn = document.getElementById('cancelShutdownBtn');
         const confirmRestartBtn = document.getElementById('confirmRestartBtn');
         const cancelRestartBtn = document.getElementById('cancelRestartBtn');
+        const confirmUpdateBtn = document.getElementById('confirmUpdateBtn');
         
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
@@ -66,6 +77,12 @@ export class SystemManager {
         if (cancelRestartBtn) {
             cancelRestartBtn.addEventListener('click', () => {
                 SystemManager.cancelRestart();
+            });
+        }
+        
+        if (confirmUpdateBtn) {
+            confirmUpdateBtn.addEventListener('click', () => {
+                SystemManager.initiateUpdate();
             });
         }
         
@@ -93,6 +110,18 @@ export class SystemManager {
                 console.error('Error creating restart modal:', error);
             }
         }
+        
+        const updateModal = document.getElementById('updateModal');
+        if (updateModal) {
+            try {
+                SystemManager.modals.update = new bootstrap.Modal(updateModal);
+                updateModal.addEventListener('hidden.bs.modal', () => {
+                    SystemManager.resetUpdateModal();
+                });
+            } catch (error) {
+                console.error('Error creating update modal:', error);
+            }
+        }
     }
     
     static showShutdownModal() {
@@ -110,6 +139,123 @@ export class SystemManager {
             SystemManager.modals.restart.show();
         } else {
             console.error('restartModal is not initialized!');
+        }
+    }
+    
+    static showUpdateModal() {
+        if (SystemManager.modals.update) {
+            SystemManager.resetUpdateModal();
+            SystemManager.modals.update.show();
+        } else {
+            console.error('updateModal is not initialized!');
+        }
+    }
+    
+    static resetUpdateModal() {
+        // Hide all status sections
+        const updateStatus = document.getElementById('updateStatus');
+        const updateComplete = document.getElementById('updateComplete');
+        const updateError = document.getElementById('updateError');
+        const updateActions = document.getElementById('updateActions');
+        const updateActiveActions = document.getElementById('updateActiveActions');
+        const updateCloseBtn = document.getElementById('updateCloseBtn');
+        
+        if (updateStatus) updateStatus.style.display = 'none';
+        if (updateComplete) updateComplete.style.display = 'none';
+        if (updateError) updateError.style.display = 'none';
+        if (updateActions) updateActions.style.display = 'block';
+        if (updateActiveActions) updateActiveActions.style.display = 'none';
+        if (updateCloseBtn) updateCloseBtn.disabled = false;
+        
+        // Clear output
+        const updateOutput = document.getElementById('updateOutput');
+        if (updateOutput) updateOutput.textContent = '';
+    }
+    
+    static async initiateUpdate() {
+        try {
+            // Show loading state
+            const confirmBtn = document.getElementById('confirmUpdateBtn');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Starting Update...';
+            confirmBtn.disabled = true;
+            
+            // Hide initial actions and show update in progress
+            document.getElementById('updateActions').style.display = 'none';
+            document.getElementById('updateActiveActions').style.display = 'block';
+            document.getElementById('updateStatus').style.display = 'block';
+            document.getElementById('updateCloseBtn').disabled = true;
+            
+            const updateOutput = document.getElementById('updateOutput');
+            updateOutput.textContent = 'Initiating system update...\n';
+            
+            // Start update process with streaming output
+            const response = await fetch('/api/system/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Update failed: ${response.status} ${response.statusText}`);
+            }
+            
+            // Handle streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                updateOutput.textContent += chunk;
+                
+                // Auto-scroll to bottom
+                updateOutput.scrollTop = updateOutput.scrollHeight;
+            }
+            
+            // Update completed successfully
+            document.getElementById('updateStatus').style.display = 'none';
+            document.getElementById('updateComplete').style.display = 'block';
+            document.getElementById('updateCloseBtn').disabled = false;
+            
+            // Auto-refresh countdown
+            let countdown = 5;
+            const countdownElement = document.getElementById('refreshCountdown');
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdownElement) countdownElement.textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    location.reload();
+                }
+            }, 1000);
+            
+            Utils.showToast('Update completed successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Update failed:', error);
+            
+            // Show error state
+            document.getElementById('updateStatus').style.display = 'none';
+            document.getElementById('updateError').style.display = 'block';
+            document.getElementById('updateErrorMessage').textContent = error.message;
+            document.getElementById('updateCloseBtn').disabled = false;
+            
+            // Reset buttons
+            const confirmBtn = document.getElementById('confirmUpdateBtn');
+            if (confirmBtn) {
+                confirmBtn.innerHTML = '<i class="bi bi-download me-2"></i>Start Update';
+                confirmBtn.disabled = false;
+            }
+            
+            document.getElementById('updateActions').style.display = 'block';
+            document.getElementById('updateActiveActions').style.display = 'none';
+            
+            Utils.showToast(`Update failed: ${error.message}`, 'error');
         }
     }
     

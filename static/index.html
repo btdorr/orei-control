@@ -39,6 +39,10 @@
                             <li><a class="dropdown-item text-info" href="#" id="restartMenuItem">
                                 <i class="bi bi-arrow-clockwise me-2"></i>Restart System
                             </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-success" href="#" id="updateMenuItem">
+                                <i class="bi bi-download me-2"></i>System Update
+                            </a></li>
                         </ul>
                     </div>
                     <!-- Theme Selector -->
@@ -534,6 +538,84 @@
                             <i class="bi bi-x-circle me-2"></i>Cancel Restart
                         </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Update Modal -->
+    <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-success" id="updateModalLabel">
+                        <i class="bi bi-download me-2"></i>System Update
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="updateCloseBtn"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>System Update:</strong> This will update the Orei Control Panel to the latest version.
+                    </div>
+                    <p>This update process will:</p>
+                    <ul>
+                        <li>Download the latest code from the repository</li>
+                        <li>Update Python dependencies</li>
+                        <li>Restart the control panel service</li>
+                        <li>Preserve your current configuration</li>
+                    </ul>
+                    <p class="text-muted">
+                        <i class="bi bi-clock me-1"></i>
+                        The update process typically takes 1-2 minutes to complete.
+                    </p>
+                    
+                    <!-- Update status display -->
+                    <div id="updateStatus" style="display: none;">
+                        <div class="alert alert-info" role="alert">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                                <span>Update in progress...</span>
+                            </div>
+                        </div>
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Update Progress</h6>
+                            </div>
+                            <div class="card-body">
+                                <pre id="updateOutput" class="bg-dark text-light p-3 mb-0" style="height: 300px; overflow-y: auto; font-size: 0.875rem;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Update complete display -->
+                    <div id="updateComplete" style="display: none;">
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>
+                            <strong>Update Complete!</strong> The system has been successfully updated.
+                        </div>
+                        <p>The page will automatically refresh in <span id="refreshCountdown">5</span> seconds to show the updated version.</p>
+                    </div>
+                    
+                    <!-- Update error display -->
+                    <div id="updateError" style="display: none;">
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Update Failed:</strong> <span id="updateErrorMessage"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div id="updateActions">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-success" id="confirmUpdateBtn">
+                            <i class="bi bi-download me-2"></i>Start Update
+                        </button>
+                    </div>
+                    <div id="updateActiveActions" style="display: none;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" disabled>Close</button>
+                        <small class="text-muted">Please wait for the update to complete...</small>
                     </div>
                 </div>
             </div>

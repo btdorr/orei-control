@@ -13,7 +13,7 @@ import subprocess
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, Response
 from flask_cors import CORS
 import serial
 import serial.tools.list_ports
@@ -947,6 +947,59 @@ def cancel_restart():
         return jsonify({
             'success': False,
             'error': f'Failed to cancel restart: {str(e)}'
+        }), 500
+
+@app.route('/api/system/update', methods=['POST'])
+def system_update():
+    """Update the Orei Control Panel system"""
+    try:
+        # Log the update request
+        logger.info("System update requested via web interface")
+        
+        def generate_update_output():
+            """Generator function to stream update output"""
+            try:
+                # Run the update script and stream output
+                process = subprocess.Popen(
+                    ['/bin/bash', './update-app.sh'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True,
+                    bufsize=1
+                )
+                
+                # Stream output line by line
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        yield line
+                
+                # Wait for process to complete
+                process.stdout.close()
+                return_code = process.wait()
+                
+                if return_code != 0:
+                    yield f"\n❌ Update failed with exit code {return_code}\n"
+                else:
+                    yield f"\n✅ Update completed successfully!\n"
+                    
+            except Exception as e:
+                yield f"\n❌ Update failed: {str(e)}\n"
+        
+        # Return streaming response
+        return Response(
+            generate_update_output(),
+            mimetype='text/plain',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to start system update: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to start update: {str(e)}'
         }), 500
 
 # Error handlers
