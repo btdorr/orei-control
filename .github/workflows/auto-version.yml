@@ -69,3 +69,5 @@ jobs:
         git add version.json
         git commit -m "Auto-update version to ${{ steps.version.outputs.version }} [skip ci]"
         git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
