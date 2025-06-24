@@ -18,9 +18,33 @@ window.oreiApp = {
     windowInputs: {1: 1, 2: 2, 3: 3, 4: 4}
 };
 
+// Load and display version information
+async function loadVersionInfo() {
+    try {
+        const response = await fetch('/api/version');
+        const data = await response.json();
+        
+        if (data.success && data.version) {
+            const versionElement = document.getElementById('versionInfo');
+            if (versionElement) {
+                versionElement.textContent = `(v${data.version.version})`;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load version info:', error);
+        const versionElement = document.getElementById('versionInfo');
+        if (versionElement) {
+            versionElement.textContent = '(v1.0.0)';
+        }
+    }
+}
+
 // Initialize application
 async function initialize() {
     try {
+        // Load version information
+        await loadVersionInfo();
+        
         // Initialize theme system
         ThemeManager.init();
         

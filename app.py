@@ -517,6 +517,34 @@ def index():
     with open('static/index.html', 'r') as f:
         return f.read()
 
+@app.route('/api/version', methods=['GET'])
+def get_version():
+    """Get application version information"""
+    try:
+        version_file = 'version.json'
+        if os.path.exists(version_file):
+            with open(version_file, 'r') as f:
+                version_data = json.load(f)
+        else:
+            # Fallback version info if file doesn't exist
+            version_data = {
+                "version": "1.0.0",
+                "build": "1",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "commit": "unknown"
+            }
+        
+        return jsonify({
+            "success": True,
+            "version": version_data
+        })
+    except Exception as e:
+        logger.error(f"Error getting version: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route('/api/command', methods=['POST'])
 def send_command():
     """Send RS-232 command to device"""
