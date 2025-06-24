@@ -572,7 +572,7 @@
                     </p>
                     
                     <!-- Update status display -->
-                    <div id="updateStatus" style="display: none;">
+                    <div id="updateStatus" style="display: none;" aria-live="polite">
                         <div class="alert alert-info" role="alert">
                             <div class="d-flex align-items-center">
                                 <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
@@ -584,22 +584,22 @@
                                 <h6 class="mb-0">Update Progress</h6>
                             </div>
                             <div class="card-body">
-                                <pre id="updateOutput" class="bg-dark text-light p-3 mb-0" style="height: 300px; overflow-y: auto; font-size: 0.875rem;"></pre>
+                                <pre id="updateOutput" class="bg-dark text-light p-3 mb-0" style="height: 300px; overflow-y: auto; font-size: 0.875rem;" role="log" aria-label="Update process output"></pre>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Update complete display -->
-                    <div id="updateComplete" style="display: none;">
+                    <div id="updateComplete" style="display: none;" aria-live="assertive">
                         <div class="alert alert-success" role="alert">
                             <i class="bi bi-check-circle me-2"></i>
                             <strong>Update Complete!</strong> The system has been successfully updated.
                         </div>
-                        <p>The page will automatically refresh in <span id="refreshCountdown">5</span> seconds to show the updated version.</p>
+                        <p>The page will automatically refresh in <span id="refreshCountdown" aria-live="polite">5</span> seconds to show the updated version.</p>
                     </div>
                     
                     <!-- Update error display -->
-                    <div id="updateError" style="display: none;">
+                    <div id="updateError" style="display: none;" aria-live="assertive">
                         <div class="alert alert-danger" role="alert">
                             <i class="bi bi-exclamation-triangle me-2"></i>
                             <strong>Update Failed:</strong> <span id="updateErrorMessage"></span>
@@ -614,8 +614,10 @@
                         </button>
                     </div>
                     <div id="updateActiveActions" style="display: none;">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" disabled>Close</button>
-                        <small class="text-muted">Please wait for the update to complete...</small>
+                        <button type="button" class="btn btn-warning" id="cancelUpdateBtn">
+                            <i class="bi bi-x-circle me-2"></i>Cancel Update
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>

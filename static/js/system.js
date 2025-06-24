@@ -12,7 +12,8 @@ export class SystemManager {
     
     static timers = {
         shutdown: null,
-        restart: null
+        restart: null,
+        update: null
     };
     
     static init() {
@@ -55,6 +56,7 @@ export class SystemManager {
         const confirmRestartBtn = document.getElementById('confirmRestartBtn');
         const cancelRestartBtn = document.getElementById('cancelRestartBtn');
         const confirmUpdateBtn = document.getElementById('confirmUpdateBtn');
+        const cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
         
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
@@ -83,6 +85,12 @@ export class SystemManager {
         if (confirmUpdateBtn) {
             confirmUpdateBtn.addEventListener('click', () => {
                 SystemManager.initiateUpdate();
+            });
+        }
+        
+        if (cancelUpdateBtn) {
+            cancelUpdateBtn.addEventListener('click', () => {
+                SystemManager.cancelUpdate();
             });
         }
         
@@ -170,24 +178,96 @@ export class SystemManager {
         // Clear output
         const updateOutput = document.getElementById('updateOutput');
         if (updateOutput) updateOutput.textContent = '';
+        
+        // Reset button state
+        const confirmBtn = document.getElementById('confirmUpdateBtn');
+        if (confirmBtn) {
+            confirmBtn.innerHTML = '<i class="bi bi-download me-2"></i>Start Update';
+            confirmBtn.disabled = false;
+        }
+    }
+    
+    static showUpdateStatus() {
+        // Hide initial actions and show update in progress
+        const updateActions = document.getElementById('updateActions');
+        const updateActiveActions = document.getElementById('updateActiveActions');
+        const updateStatus = document.getElementById('updateStatus');
+        const updateCloseBtn = document.getElementById('updateCloseBtn');
+        
+        if (updateActions) updateActions.style.display = 'none';
+        if (updateActiveActions) updateActiveActions.style.display = 'block';
+        if (updateStatus) updateStatus.style.display = 'block';
+        if (updateCloseBtn) updateCloseBtn.disabled = true;
+    }
+    
+    static showUpdateComplete() {
+        const updateStatus = document.getElementById('updateStatus');
+        const updateComplete = document.getElementById('updateComplete');
+        const updateCloseBtn = document.getElementById('updateCloseBtn');
+        
+        if (updateStatus) updateStatus.style.display = 'none';
+        if (updateComplete) updateComplete.style.display = 'block';
+        if (updateCloseBtn) updateCloseBtn.disabled = false;
+        
+        // Auto-refresh countdown
+        let countdown = 5;
+        const countdownElement = document.getElementById('refreshCountdown');
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdownElement) countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                location.reload();
+            }
+        }, 1000);
+        
+        SystemManager.timers.update = countdownInterval;
+    }
+    
+    static showUpdateError(errorMessage) {
+        const updateStatus = document.getElementById('updateStatus');
+        const updateError = document.getElementById('updateError');
+        const updateErrorMessage = document.getElementById('updateErrorMessage');
+        const updateActions = document.getElementById('updateActions');
+        const updateActiveActions = document.getElementById('updateActiveActions');
+        const updateCloseBtn = document.getElementById('updateCloseBtn');
+        
+        if (updateStatus) updateStatus.style.display = 'none';
+        if (updateError) updateError.style.display = 'block';
+        if (updateErrorMessage) updateErrorMessage.textContent = errorMessage;
+        if (updateActions) updateActions.style.display = 'block';
+        if (updateActiveActions) updateActiveActions.style.display = 'none';
+        if (updateCloseBtn) updateCloseBtn.disabled = false;
+        
+        // Reset button state
+        const confirmBtn = document.getElementById('confirmUpdateBtn');
+        if (confirmBtn) {
+            confirmBtn.innerHTML = '<i class="bi bi-download me-2"></i>Start Update';
+            confirmBtn.disabled = false;
+        }
     }
     
     static async initiateUpdate() {
         try {
             // Show loading state
             const confirmBtn = document.getElementById('confirmUpdateBtn');
+            if (!confirmBtn) {
+                console.error('Update confirm button not found');
+                return;
+            }
+            
             const originalText = confirmBtn.innerHTML;
             confirmBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Starting Update...';
             confirmBtn.disabled = true;
             
-            // Hide initial actions and show update in progress
-            document.getElementById('updateActions').style.display = 'none';
-            document.getElementById('updateActiveActions').style.display = 'block';
-            document.getElementById('updateStatus').style.display = 'block';
-            document.getElementById('updateCloseBtn').disabled = true;
+            // Show update in progress state
+            SystemManager.showUpdateStatus();
             
             const updateOutput = document.getElementById('updateOutput');
-            updateOutput.textContent = 'Initiating system update...\n';
+            if (updateOutput) {
+                updateOutput.textContent = 'Initiating system update...\n';
+            }
             
             // Start update process with streaming output
             const response = await fetch('/api/system/update', {
@@ -198,64 +278,75 @@ export class SystemManager {
             });
             
             if (!response.ok) {
-                throw new Error(`Update failed: ${response.status} ${response.statusText}`);
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Update failed: ${response.status} ${response.statusText} - ${errorText}`);
             }
             
             // Handle streaming response
+            if (!response.body) {
+                throw new Error('No response body received from server');
+            }
+            
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                updateOutput.textContent += chunk;
-                
-                // Auto-scroll to bottom
-                updateOutput.scrollTop = updateOutput.scrollHeight;
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    if (updateOutput) {
+                        updateOutput.textContent += chunk;
+                        // Auto-scroll to bottom
+                        updateOutput.scrollTop = updateOutput.scrollHeight;
+                    }
+                }
+            } finally {
+                // Ensure reader is properly closed
+                reader.releaseLock();
             }
             
             // Update completed successfully
-            document.getElementById('updateStatus').style.display = 'none';
-            document.getElementById('updateComplete').style.display = 'block';
-            document.getElementById('updateCloseBtn').disabled = false;
-            
-            // Auto-refresh countdown
-            let countdown = 5;
-            const countdownElement = document.getElementById('refreshCountdown');
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (countdownElement) countdownElement.textContent = countdown;
-                
-                if (countdown <= 0) {
-                    clearInterval(countdownInterval);
-                    location.reload();
-                }
-            }, 1000);
-            
+            SystemManager.showUpdateComplete();
             Utils.showToast('Update completed successfully!', 'success');
             
         } catch (error) {
             console.error('Update failed:', error);
-            
-            // Show error state
-            document.getElementById('updateStatus').style.display = 'none';
-            document.getElementById('updateError').style.display = 'block';
-            document.getElementById('updateErrorMessage').textContent = error.message;
-            document.getElementById('updateCloseBtn').disabled = false;
-            
-            // Reset buttons
-            const confirmBtn = document.getElementById('confirmUpdateBtn');
-            if (confirmBtn) {
-                confirmBtn.innerHTML = '<i class="bi bi-download me-2"></i>Start Update';
-                confirmBtn.disabled = false;
+            SystemManager.showUpdateError(error.message);
+            Utils.showToast(`Update failed: ${error.message}`, 'error');
+        }
+    }
+    
+    static async cancelUpdate() {
+        try {
+            // Clear any existing timer
+            if (SystemManager.timers.update) {
+                clearInterval(SystemManager.timers.update);
+                SystemManager.timers.update = null;
             }
             
-            document.getElementById('updateActions').style.display = 'block';
-            document.getElementById('updateActiveActions').style.display = 'none';
+            // Send cancel request to backend
+            const response = await fetch('/api/system/update/cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             
-            Utils.showToast(`Update failed: ${error.message}`, 'error');
+            if (response.ok) {
+                const data = await response.json();
+                Utils.showToast(data.message || 'Update cancelled successfully', 'info');
+            } else {
+                Utils.showToast('Failed to cancel update', 'warning');
+            }
+            
+            // Reset modal to initial state
+            SystemManager.resetUpdateModal();
+            
+        } catch (error) {
+            console.error('Failed to cancel update:', error);
+            Utils.showToast('Failed to cancel update', 'error');
         }
     }
     

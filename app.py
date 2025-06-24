@@ -12,6 +12,7 @@ import logging
 import subprocess
 import requests
 import xml.etree.ElementTree as ET
+import signal
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, Response
 from flask_cors import CORS
@@ -30,6 +31,9 @@ CORS(app)
 
 # Configuration
 APP_CONFIG_FILE = 'app_config.json'
+
+# Global variable to track update process
+update_process = None
 
 class Config:
     def __init__(self):
@@ -952,30 +956,55 @@ def cancel_restart():
 @app.route('/api/system/update', methods=['POST'])
 def system_update():
     """Update the Orei Control Panel system"""
+    global update_process
+    
     try:
+        # Check if update is already in progress
+        if update_process and update_process.poll() is None:
+            return jsonify({
+                'success': False,
+                'error': 'Update already in progress'
+            }), 409
+        
         # Log the update request
         logger.info("System update requested via web interface")
         
+        # Validate update script exists and is executable
+        script_path = os.path.abspath('./update-app.sh')
+        if not os.path.exists(script_path):
+            return jsonify({
+                'success': False,
+                'error': 'Update script not found'
+            }), 404
+            
+        if not os.access(script_path, os.X_OK):
+            return jsonify({
+                'success': False,
+                'error': 'Update script is not executable'
+            }), 403
+        
         def generate_update_output():
             """Generator function to stream update output"""
+            global update_process
             try:
                 # Run the update script and stream output
-                process = subprocess.Popen(
-                    ['/bin/bash', './update-app.sh'],
+                update_process = subprocess.Popen(
+                    ['/bin/bash', script_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     universal_newlines=True,
-                    bufsize=1
+                    bufsize=1,
+                    cwd=os.path.dirname(script_path)
                 )
                 
                 # Stream output line by line
-                for line in iter(process.stdout.readline, ''):
+                for line in iter(update_process.stdout.readline, ''):
                     if line:
                         yield line
                 
                 # Wait for process to complete
-                process.stdout.close()
-                return_code = process.wait()
+                update_process.stdout.close()
+                return_code = update_process.wait()
                 
                 if return_code != 0:
                     yield f"\n❌ Update failed with exit code {return_code}\n"
@@ -1000,6 +1029,47 @@ def system_update():
         return jsonify({
             'success': False,
             'error': f'Failed to start update: {str(e)}'
+        }), 500
+
+@app.route('/api/system/update/cancel', methods=['POST'])
+def cancel_update():
+    """Cancel the ongoing system update"""
+    global update_process
+    
+    try:
+        if not update_process or update_process.poll() is not None:
+            return jsonify({
+                'success': False,
+                'error': 'No update process is currently running'
+            }), 400
+        
+        # Log the cancel request
+        logger.info("System update cancel requested via web interface")
+        
+        # Try to terminate the process gracefully first
+        update_process.terminate()
+        
+        # Wait for a short time for graceful termination
+        try:
+            update_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            # Force kill if graceful termination fails
+            update_process.kill()
+            update_process.wait()
+        
+        # Reset the global process variable
+        update_process = None
+        
+        return jsonify({
+            'success': True,
+            'message': 'Update process cancelled successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to cancel system update: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to cancel update: {str(e)}'
         }), 500
 
 # Error handlers
