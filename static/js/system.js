@@ -160,6 +160,8 @@ export class SystemManager {
     }
     
     static resetUpdateModal() {
+        console.log('Resetting update modal...');
+        
         // Hide all status sections
         const updateStatus = document.getElementById('updateStatus');
         const updateComplete = document.getElementById('updateComplete');
@@ -181,9 +183,11 @@ export class SystemManager {
         
         // Reset button state
         const confirmBtn = document.getElementById('confirmUpdateBtn');
+        console.log('Update button found:', !!confirmBtn);
         if (confirmBtn) {
             confirmBtn.innerHTML = '<i class="bi bi-download me-2"></i>Start Update';
             confirmBtn.disabled = false;
+            console.log('Update button enabled, disabled state:', confirmBtn.disabled);
         }
     }
     

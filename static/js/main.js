@@ -21,14 +21,26 @@ window.oreiApp = {
 // Load and display version information
 async function loadVersionInfo() {
     try {
+        console.log('Loading version info...');
         const response = await fetch('/api/version');
+        console.log('Version API response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('Version data received:', data);
         
         if (data.success && data.version) {
             const versionElement = document.getElementById('versionInfo');
+            console.log('Version element found:', !!versionElement);
             if (versionElement) {
                 versionElement.textContent = `(v${data.version.version})`;
+                console.log('Version updated to:', data.version.version);
             }
+        } else {
+            throw new Error('Invalid version data received');
         }
     } catch (error) {
         console.error('Failed to load version info:', error);
