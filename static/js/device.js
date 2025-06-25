@@ -8,12 +8,13 @@ import { AudioControl } from './audio.js';
 export const DeviceControl = {
     // Initialize device control
     async initialize() {
-        // Check power status once and store result
-        const isOn = await this.checkPowerStatus();
+        // Check serial communication and power status
+        const isConnected = await this.checkSerialCommunication();
+        const isOn = isConnected ? await this.checkPowerStatus() : false;
         this.setupEventListeners();
         
-        // If device is on, do full refresh (but pass the known power status)
-        if (isOn) {
+        // If device is connected and on, do full refresh (but pass the known power status)
+        if (isConnected && isOn) {
             await this.refreshAll(isOn);
         }
     },
@@ -139,13 +140,38 @@ export const DeviceControl = {
         }
     },
     
+    // Check serial communication status
+    async checkSerialCommunication() {
+        try {
+            const response = await API.sendCommand('r power!');
+            if (response) {
+                this.updateConnectionStatus(true);
+                return true;
+            } else {
+                // If no response, try once more after a short delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const retryResponse = await API.sendCommand('r power!');
+                if (retryResponse) {
+                    this.updateConnectionStatus(true);
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking serial communication:', error);
+        }
+        
+        // Default to offline if we can't communicate
+        this.updateConnectionStatus(false);
+        return false;
+    },
+
     // Check power status
     async checkPowerStatus() {
         try {
             const response = await API.sendCommand('r power!');
             if (response) {
                 const isOn = response.includes('power on');
-                this.updatePowerStatus(isOn);
+                this.updatePowerControls(isOn);
                 return isOn;
             } else {
                 // If no response, try once more after a short delay
@@ -153,7 +179,7 @@ export const DeviceControl = {
                 const retryResponse = await API.sendCommand('r power!');
                 if (retryResponse) {
                     const isOn = retryResponse.includes('power on');
-                    this.updatePowerStatus(isOn);
+                    this.updatePowerControls(isOn);
                     return isOn;
                 }
             }
@@ -161,33 +187,26 @@ export const DeviceControl = {
             console.error('Error checking power status:', error);
         }
         
-        // Default to offline if we can't determine status
-        this.updatePowerStatus(false);
+        // Update power controls to unknown state if can't determine status
+        this.updatePowerControls(null);
         return false;
     },
     
-    // Update power status UI
-    updatePowerStatus(isOn) {
+    // Update connection status indicator (based on serial communication)
+    updateConnectionStatus(isConnected) {
         const indicator = document.getElementById('powerIndicator');
         const status = document.getElementById('powerStatus');
-        const powerBtn = document.getElementById('powerBtn');
         
-        if (isOn) {
+        if (isConnected) {
             if (indicator) {
                 indicator.classList.remove('status-off');
                 indicator.classList.add('status-on');
             }
             if (status) status.textContent = 'Online';
-            if (powerBtn) {
-                powerBtn.innerHTML = '<i class="bi bi-power"></i> Power Off';
-                powerBtn.classList.remove('btn-success');
-                powerBtn.classList.add('btn-danger');
-                powerBtn.disabled = false;
-            }
             
-            // Enable all controls
+            // Enable all controls when connected
             document.querySelectorAll('select, input, button').forEach(el => {
-                if (el.id !== 'powerBtn') el.disabled = false;
+                el.disabled = false;
             });
         } else {
             if (indicator) {
@@ -195,12 +214,6 @@ export const DeviceControl = {
                 indicator.classList.add('status-off');
             }
             if (status) status.textContent = 'Offline';
-            if (powerBtn) {
-                powerBtn.innerHTML = '<i class="bi bi-power"></i> Power On';
-                powerBtn.classList.remove('btn-danger');
-                powerBtn.classList.add('btn-success');
-                powerBtn.disabled = false;
-            }
             
             // Define elements that should always remain enabled when offline
             const alwaysEnabledIds = [
@@ -217,7 +230,8 @@ export const DeviceControl = {
                 'refreshPortsBtn',       // Refresh serial ports
                 'serialBaudSelect',      // Serial baud rate
                 'testSerialBtn',         // Test serial connection
-                'saveSerialBtn'          // Save serial configuration
+                'saveSerialBtn',         // Save serial configuration
+                'configureRokuBtn'       // Configure Roku devices
             ];
             
             // Disable device controls but keep system/configuration controls enabled
@@ -231,6 +245,35 @@ export const DeviceControl = {
             });
         }
     },
+
+    // Update power controls (separate from connection status)
+    updatePowerControls(isOn) {
+        const powerBtn = document.getElementById('powerBtn');
+        
+        if (isOn === true) {
+            if (powerBtn) {
+                powerBtn.innerHTML = '<i class="bi bi-power"></i> Power Off';
+                powerBtn.classList.remove('btn-success');
+                powerBtn.classList.add('btn-danger');
+                powerBtn.disabled = false;
+            }
+        } else if (isOn === false) {
+            if (powerBtn) {
+                powerBtn.innerHTML = '<i class="bi bi-power"></i> Power On';
+                powerBtn.classList.remove('btn-danger');
+                powerBtn.classList.add('btn-success');
+                powerBtn.disabled = false;
+            }
+        } else {
+            // Unknown power state (null)
+            if (powerBtn) {
+                powerBtn.innerHTML = '<i class="bi bi-power"></i> Power (Unknown)';
+                powerBtn.classList.remove('btn-danger', 'btn-success');
+                powerBtn.classList.add('btn-secondary');
+                powerBtn.disabled = false;
+            }
+        }
+    },
     
     // Toggle power
     async togglePower() {
@@ -240,6 +283,7 @@ export const DeviceControl = {
         
         // Wait for device to change state
         setTimeout(() => {
+            this.checkSerialCommunication();
             this.checkPowerStatus();
             if (!isOn) {
                 // If turning on, refresh everything after initialization
@@ -286,9 +330,12 @@ export const DeviceControl = {
         // Show a non-blocking notification instead of full spinner
         Utils.showToast('Refreshing device settings...', 'info', 3000);
         
-        // If power status not provided, check it
+        // Check serial communication first
+        const isConnected = await this.checkSerialCommunication();
+        
+        // If power status not provided, check it (only if connected)
         if (typeof isOn === 'undefined') {
-            isOn = await this.checkPowerStatus();
+            isOn = isConnected ? await this.checkPowerStatus() : false;
         }
         
         if (isOn) {
