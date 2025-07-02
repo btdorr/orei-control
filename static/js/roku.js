@@ -43,6 +43,12 @@ export const RokuControl = {
             saveMappingsBtn.addEventListener('click', () => this.saveMappings());
         }
         
+        // Play/Pause All button
+        const playPauseAllBtn = document.getElementById('playPauseAllBtn');
+        if (playPauseAllBtn) {
+            playPauseAllBtn.addEventListener('click', () => this.playPauseAll());
+        }
+        
         // Refresh Roku remotes when display mode changes
         document.addEventListener('displayModeChanged', () => {
             this.updateRokuRemotes();
@@ -249,16 +255,18 @@ export const RokuControl = {
         const manageBtn = document.getElementById('manageRokuBtn');
         const remotesColumn = document.getElementById('rokuRemotesColumn');
         const deviceManagement = document.getElementById('rokuDeviceManagement');
+        const playPauseAllContainer = document.getElementById('playPauseAllContainer');
         if (!container) return;
         
         // Check if any devices are mapped
         const hasMappedDevices = Object.keys(this.mappings).length > 0;
         
         if (!hasMappedDevices) {
-            // Show configuration prompt, hide remotes and manage button
+            // Show configuration prompt, hide remotes, manage button, and play/pause all button
             if (configPrompt) configPrompt.style.display = 'block';
             if (manageBtn) manageBtn.style.display = 'none';
             if (deviceManagement) deviceManagement.style.display = 'none';
+            if (playPauseAllContainer) playPauseAllContainer.style.display = 'none';
             if (remotesColumn) {
                 remotesColumn.className = 'col-12'; // Full width when no devices
             }
@@ -266,10 +274,11 @@ export const RokuControl = {
             return;
         }
         
-        // Hide configuration prompt, show remotes and manage button
+        // Hide configuration prompt, show remotes, manage button, and play/pause all button
         if (configPrompt) configPrompt.style.display = 'none';
         if (manageBtn) manageBtn.style.display = 'block';
         if (deviceManagement) deviceManagement.style.display = 'none'; // Keep hidden, use modal
+        if (playPauseAllContainer) playPauseAllContainer.style.display = 'block';
         if (remotesColumn) {
             remotesColumn.className = 'col-12'; // Full width for remotes
         }
@@ -481,6 +490,45 @@ export const RokuControl = {
             // No success toast - commands work silently when successful
         } catch (error) {
             Utils.showToast(`Roku error: ${error.message || 'Network error'}`, 'danger');
+        }
+    },
+    
+    // Send play/pause command to all configured Roku devices
+    async playPauseAll() {
+        const configuredDevices = Object.keys(this.mappings);
+        
+        if (configuredDevices.length === 0) {
+            Utils.showToast('No Roku devices configured', 'warning');
+            return;
+        }
+        
+        let successCount = 0;
+        const promises = configuredDevices.map(async (hdmi) => {
+            try {
+                const response = await fetch('/api/roku/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hdmi: hdmi, command: 'Play' })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    successCount++;
+                }
+                return data.success;
+            } catch (error) {
+                return false;
+            }
+        });
+        
+        await Promise.all(promises);
+        
+        if (successCount === configuredDevices.length) {
+            Utils.showToast(`Play/Pause command sent to all ${successCount} Roku devices`, 'success');
+        } else if (successCount > 0) {
+            Utils.showToast(`Play/Pause sent to ${successCount} of ${configuredDevices.length} Roku devices`, 'warning');
+        } else {
+            Utils.showToast('Failed to send Play/Pause to any Roku devices', 'danger');
         }
     },
     

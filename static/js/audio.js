@@ -65,10 +65,18 @@ export const AudioControl = {
             });
         }
         
-        // Mute switch
+        // Mute switch (Advanced Settings)
         const muteSwitch = document.getElementById('muteSwitch');
         if (muteSwitch) {
             muteSwitch.addEventListener('change', (e) => {
+                this.toggleMute(e.target.checked);
+            });
+        }
+        
+        // Remote mute switch (Remote Control Tab)
+        const remoteMuteSwitch = document.getElementById('remoteMuteSwitch');
+        if (remoteMuteSwitch) {
+            remoteMuteSwitch.addEventListener('change', (e) => {
                 this.toggleMute(e.target.checked);
             });
         }
@@ -95,6 +103,17 @@ export const AudioControl = {
     // Toggle mute
     async toggleMute(muted) {
         await API.sendCommand(`s output audio mute ${muted ? '1' : '0'}!`);
+        
+        // Sync both mute switches
+        const muteSwitch = document.getElementById('muteSwitch');
+        const remoteMuteSwitch = document.getElementById('remoteMuteSwitch');
+        
+        if (muteSwitch) {
+            muteSwitch.checked = muted;
+        }
+        if (remoteMuteSwitch) {
+            remoteMuteSwitch.checked = muted;
+        }
     },
     
     // Load audio settings from device
@@ -155,9 +174,15 @@ export const AudioControl = {
         
         // Get mute status
         if (muteResponse && muteResponse !== 'No response') {
+            const isMuted = muteResponse.includes('mute: on');
             const muteSwitch = document.getElementById('muteSwitch');
+            const remoteMuteSwitch = document.getElementById('remoteMuteSwitch');
+            
             if (muteSwitch) {
-                muteSwitch.checked = muteResponse.includes('mute: on');
+                muteSwitch.checked = isMuted;
+            }
+            if (remoteMuteSwitch) {
+                remoteMuteSwitch.checked = isMuted;
             }
         }
     },
