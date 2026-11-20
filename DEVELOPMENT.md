@@ -18,8 +18,10 @@ Development Environment:
 ├── Branch: develop
 ├── Port: 8080 (direct access)
 ├── Service: Flask dev server
-└── Hardware: /dev/ttyUSB0 (USB adapter)
+└── Hardware: serial port from app_config_dev.json
 ```
+
+`start-dev.sh` runs `python app.py --port 8080 --debug` with `OREI_CONFIG=app_config_dev.json`. Gunicorn ignores these. Production always uses `app_config.json` on port 5000.
 
 ### Branch Strategy
 - **`main`** - Production-ready releases
@@ -121,7 +123,7 @@ git push origin main
 - ✅ Rollback capability on failure
 - ✅ Service health checking
 - ✅ Dependency conflict detection
-- ✅ Zero-downtime deployment process
+- ⚠️ Not zero-downtime: the service is stopped during the update and restarted after
 
 ## 🎯 Deployment Strategies
 
@@ -137,8 +139,14 @@ Production:  /opt/orei-control (port 80 via nginx)
 - Simple setup
 
 **Cons:**
-- Can't test and run production simultaneously
-- Hardware conflicts possible
+- One Orei device and one serial port. The port is opened exclusively, so whichever process opens it first keeps it, and the other reports "Serial port not connected". Stop the service before testing dev against the hardware:
+  ```bash
+  sudo systemctl stop orei-control.service
+  ./start-dev.sh
+  # when done: Ctrl+C, then
+  sudo systemctl start orei-control.service
+  ```
+- Dev has its own `roku_devices.json`. Copy it from `/opt/orei-control` to test Roku control with the same mappings.
 
 ### Option 2: Dual Pi Setup (Recommended for Critical Use)
 ```
@@ -195,6 +203,7 @@ Pi 2: Development only (~/orei-control-dev, develop branch)
     "development": true
 }
 ```
+`dev-setup.sh` writes `/dev/ttyUSB0`. On a single Pi wired through GPIO, change it to `/dev/serial0`. The app reads only `serial_port` and `baud_rate`. `debug_mode` and `development` are ignored.
 
 ### Production Config (`app_config.json`)
 ```json
@@ -228,8 +237,7 @@ git reset --hard origin/develop  # Reset to last known good state
 # Check service logs
 sudo journalctl -u orei-control.service -f
 
-# Check application logs
-tail -f /opt/orei-control/gunicorn.log
+# gunicorn output goes to the journal (any gunicorn.log in /opt is stale)
 
 # Test application response
 curl -I http://localhost:5000
@@ -282,10 +290,13 @@ curl -I http://localhost:5000
 
 **Development server won't start:**
 ```bash
-pkill -f "python.*app.py"
-pkill -f "gunicorn.*8080"
+./stop-dev.sh     # stops the server recorded in .dev-server.pid
 ./start-dev.sh
 ```
+`start-dev.sh` runs the server in its own process group and records it in `.dev-server.pid`. `stop-dev.sh` stops that group only. Checkouts created before this change have older scripts that use `pkill -f "python.*app.py"`. Regenerate them by deleting `start-dev.sh` and `stop-dev.sh` and copying the new heredocs from `dev-setup.sh`.
+
+**Serial port shows "not connected" in dev:**
+The port is opened exclusively. If `orei-control.service` holds it, the dev server cannot open it. Stop the service first.
 
 **Production deployment fails:**
 - Check backup directory exists

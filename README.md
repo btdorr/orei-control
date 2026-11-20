@@ -42,41 +42,10 @@ A comprehensive web-based control interface for the Orei UHD-401MV HDMI Multivie
 - **Toast Notifications**: User feedback for all actions and status changes
 
 ### Technical Features
-- **Rate-Limited Commands**: Prevents RS-232 communication overload
-- **Command History**: Track all RS-232 commands and responses
+- **Serialized Commands**: One RS-232 command at a time under a lock, with a 200ms settle before reading the response
+- **Command History**: Last 50 RS-232 commands and responses, kept in memory
 - **Debug Console**: Send custom commands for testing and troubleshooting
-- **Sequential Processing**: Eliminates command conflicts and garbled responses
-- **Error Recovery**: Automatic retry logic and graceful failure handling
-
-## Recent Major Improvements
-
-### Roku Device Integration (v2.0)
-- Complete Roku device discovery and control system
-- Modal-based device management workflow
-- Dynamic remote controls based on display configuration
-- Network scanning with multi-threaded device discovery
-- Automatic device mapping and persistence
-
-### UI/UX Enhancements
-- **Dark Mode**: Full dark theme support across all components including modals
-- **Tablet Optimization**: Larger touch targets and improved layout for tablet usage
-- **Horizontal Remote Layout**: Fixed side-by-side Roku remote positioning
-- **Modal Interface**: Clean device configuration without disrupting main interface
-- **Volume Controls**: Added increment/decrement buttons alongside slider
-
-### Bug Fixes & Optimizations
-- **Volume Synchronization**: Fixed slider to show actual device volume instead of default 50
-- **Window Input Loading**: Resolved browser refresh issues in quad mode
-- **Duplicate ID Prevention**: Fixed modal functionality conflicts
-- **Focus Management**: Proper modal accessibility and close behavior
-- **Command Sequencing**: Eliminated RS-232 response corruption from parallel commands
-
-### Code Quality
-- **Modular Architecture**: Organized JavaScript modules for maintainability
-- **Event-Driven Design**: Proper event handling for component communication
-- **Error Handling**: Comprehensive error recovery and user feedback
-- **Performance**: Optimized command execution and UI updates
-- **Accessibility**: WCAG-compliant interface with proper ARIA attributes
+- **Reconnect on Error**: A serial error marks the port disconnected, and the next command reopens it
 
 ## Quick Start
 
@@ -99,7 +68,7 @@ chmod +x setup.sh
 ### Manual Installation
 ```bash
 # Install dependencies
-sudo apt update && sudo apt install -y python3-pip python3-venv netcat-openbsd
+sudo apt update && sudo apt install -y python3-pip python3-venv netcat-openbsd nmap
 
 # Create virtual environment
 python3 -m venv venv
@@ -108,9 +77,14 @@ source venv/bin/activate
 # Install Python packages
 pip install -r requirements.txt
 
-# Start development server
+# Start the server (port 5000, production config)
 python app.py
+
+# Or: dev port, debug/auto-reload, and a separate config file
+OREI_CONFIG=app_config_dev.json python app.py --port 8080 --debug
 ```
+
+`setup.sh` also enables the UART (`enable_uart=1` in the boot config, reboot required), adds the user to the `dialout` group, and installs the systemd service and nginx proxy. A manual install needs those steps for serial access and port 80.
 
 ## Usage Guide
 
@@ -149,6 +123,11 @@ python app.py
 - **Timeout**: 2 seconds
 - **Command Delay**: 200ms between sequential commands
 
+### Runtime Files
+Both are created at runtime in the app's working directory and are gitignored.
+- `app_config.json`: serial port and baud rate, saved from the Advanced Settings tab. Override the filename with the `OREI_CONFIG` environment variable.
+- `roku_devices.json`: Roku device to HDMI input mappings. Roku IPs are stored here, so update it if devices move to a new subnet.
+
 ### Network Requirements
 - **Roku Discovery**: Devices must be on same subnet as Raspberry Pi
 - **Ports**: TCP 8060 (Roku ECP), UDP 1900 (SSDP discovery)
@@ -174,24 +153,46 @@ python app.py
 │       ├── audio.js                # Audio control functions
 │       ├── roku.js                 # Roku device discovery and control
 │       ├── commands.js             # Command history management
+│       ├── system.js               # Shutdown, restart, and update controls
 │       ├── theme.js                # Theme switching system
 │       └── utils.js                # Shared utilities and toast notifications
-├── requirements.txt                # Python dependencies
-├── setup.sh                       # Automated installation script
-└── README.md                       # This file
+├── rs-232_commands.md              # Orei RS-232 command reference
+├── test-serial.py                  # Hardware check: serial port probe
+├── test-roku.py                    # Hardware check: Roku discovery
+├── setup.sh                        # Production install (/opt/orei-control)
+├── deploy-production.sh            # Backup, pull main, restart, rollback on failure
+├── update-app.sh                   # In-place update (used by the web UI update button)
+├── restart-service.sh / check-status.sh
+├── dev-setup.sh                    # Creates ~/orei-control-dev on the develop branch
+├── DEVELOPMENT.md                  # Dev and production workflow
+├── version.json                    # Written by CI, do not edit
+└── requirements.txt                # Python dependencies
 ```
 
 ## API Endpoints
 
 ### Device Control
-- `POST /api/command` - Send RS-232 command to multiviewer
+- `POST /api/command` - Send RS-232 command to multiviewer (`!` is appended if missing)
 - `GET /api/status` - Get device power and connection status
+- `GET /api/history` - Get command history
+- `DELETE /api/history` - Clear command history
+- `GET /api/config/serial` - Get current serial port and available ports
+- `POST /api/config/serial` - Change serial port and reconnect
+- `GET /api/version` - Get contents of `version.json`
 
 ### Roku Integration
-- `POST /api/roku/discover` - Discover Roku devices on network
-- `POST /api/roku/command` - Send ECP command to specific Roku device
-- `GET /api/roku/devices` - Get configured device mappings
-- `POST /api/roku/devices` - Save device mapping configuration
+- `GET /api/roku/discover` - Discover Roku devices on network
+- `GET /api/roku/mappings` - Get configured device mappings
+- `POST /api/roku/mappings` - Save device mapping configuration
+- `POST /api/roku/command` - Send ECP keypress to a mapped Roku device
+- `GET /api/roku/apps/<hdmi>` - List installed apps on the Roku mapped to an HDMI input
+- `POST /api/roku/launch` - Launch an app on a mapped Roku device
+
+### System
+These call `sudo shutdown` or run `update-app.sh`, so the service user needs passwordless sudo for `/usr/sbin/shutdown`.
+- `POST /api/system/shutdown` and `/api/system/shutdown/cancel` - Shut down the Pi in 1 minute, or cancel
+- `POST /api/system/restart` and `/api/system/restart/cancel` - Reboot the Pi in 1 minute, or cancel
+- `POST /api/system/update` and `/api/system/update/cancel` - Run `update-app.sh`, or cancel
 
 ## Troubleshooting
 
@@ -242,19 +243,24 @@ nmap -p 8060 --open $(ip route | grep 'scope link' | awk '{print $1}' | head -1)
 ## Development
 
 ### Architecture
-- **Frontend**: Vanilla JavaScript with modular ES6 design
-- **Backend**: Flask with rate-limited RS-232 communication
-- **Styling**: Bootstrap 5 with custom CSS variables for theming
-- **Communication**: RESTful API with WebSocket-like real-time updates
+- **Frontend**: Vanilla JavaScript ES modules, no build step
+- **Backend**: Flask, single file (`app.py`), serialized RS-232 communication
+- **Styling**: Bootstrap 5 (CDN) with custom CSS variables for theming
+- **Communication**: REST API. The UI refreshes device state on load and on the Refresh button, not by polling
+- **Production**: gunicorn (1 worker, 4 threads) on port 5000 behind nginx on port 80, run by `orei-control.service`. One process is required because the serial port is opened exclusively.
 
 ### Key Design Patterns
 - **Event-Driven**: Component communication via custom events
-- **Rate-Limited**: All device communication respects hardware limitations
-- **Responsive**: Mobile-first design with tablet optimizations
-- **Accessible**: WCAG 2.1 AA compliance with proper ARIA usage
+- **Serialized**: All device communication goes through one lock in `SerialManager`, and the port is opened exclusively so a second process cannot send commands at the same time
+- **Responsive**: Layouts for phone, tablet, and desktop
+
+### Versioning
+A GitHub Action writes `version.json` (`1.<commits/10>.<commits%10>`) and commits it to `main` with `[skip ci]` on every push. Pull before pushing to `main` again.
 
 ### Contributing
-1. Fork repository and create feature branch
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the branch and deploy workflow.
+
+1. Create a feature branch from `develop`
 2. Test on actual hardware (Raspberry Pi + Orei device)
 3. Verify both light and dark themes
 4. Test Roku integration with multiple devices
