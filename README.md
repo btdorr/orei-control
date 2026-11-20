@@ -136,8 +136,8 @@ The page title, browser tab title, and subtitle come from `branding.json` in the
 
 ```bash
 cd /opt/orei-control
-cp branding.example.json branding.json
-nano branding.json
+sudo -u orei cp branding.example.json branding.json
+sudo -u orei nano branding.json
 ```
 
 ```json
@@ -215,7 +215,7 @@ nano branding.json
 - `POST /api/roku/launch` - Launch an app on a mapped Roku device
 
 ### System
-These call `sudo shutdown` or `sudo systemd-run`, so the service user needs passwordless sudo for `/usr/sbin/shutdown`, `systemd-run`, `systemctl`, and `journalctl`.
+These call `sudo shutdown` or `sudo systemd-run`. The `orei` service user may run only the exact commands listed in `orei-control.sudoers`.
 - `POST /api/system/shutdown` and `/api/system/shutdown/cancel` - Shut down the Pi in 1 minute, or cancel
 - `POST /api/system/restart` and `/api/system/restart/cancel` - Reboot the Pi in 1 minute, or cancel
 - `POST /api/system/update` - Start `update-app.sh` as the transient systemd unit `orei-update` (returns 202)
@@ -284,12 +284,14 @@ nmap -p 8060 --open $(ip route | grep 'scope link' | awk '{print $1}' | head -1)
 ### Security
 - **No login, by design.** The panel is meant for a home network. Anyone who can reach port 80 on the Pi (LAN, or the tailnet for remote installs) can control the multiviewer, Roku devices, shutdown, restart, and updates. Keep it off the public internet.
 - The API only accepts same-origin requests from the UI (no CORS).
+- The service runs as the `orei` system user (no login shell, groups `dialout` and `plugdev` for serial access). It owns `/opt/orei-control`. Its sudo rights are limited to the exact commands in `orei-control.sudoers`: scheduling or cancelling shutdown and restart, restarting the service, reading its log, and starting the update unit as `orei`. Edit files or run git there with `sudo -u orei ...`.
+- Existing installs that ran as the admin user migrate with `/opt/orei-control/migrate-service-user.sh`. It checks that `orei` can open the serial port before switching the service.
 - Roku mappings must use private IPv4 addresses. Roku key names and app IDs are validated. The serial port can only be set to a port the app lists.
 - Device-supplied text (Roku names, models, serials) is escaped before display.
 
 ### Updates
 The System Update menu and `deploy-production.sh` both run `update-app.sh`. It:
-1. Refuses to run if tracked files have local changes or the checked-out branch is not `main` (override with `UPDATE_BRANCH`).
+1. Refuses to run if tracked files have local changes or the checked-out branch is not `main`. To follow another branch (staging tests), put its name in `.update-branch` or set `UPDATE_BRANCH` when running over SSH.
 2. Fast-forwards to `origin/main`. It never merges or rebases.
 3. Runs `pip install -r requirements.txt` only if `requirements.txt` changed.
 4. Restarts `orei-control.service` and checks `/api/version` for 30 seconds.

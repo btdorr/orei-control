@@ -5,11 +5,13 @@ Flask-based web application for RS-232 control
 """
 
 import argparse
+import grp
 import html
 import ipaddress
 import json
 import re
 import os
+import pwd
 import time
 import threading
 import logging
@@ -968,7 +970,7 @@ def system_shutdown():
         logger.warning("System shutdown requested via web interface")
         
         # Send shutdown command with a 1-minute delay to allow response
-        subprocess.Popen(['/usr/bin/sudo', '/usr/sbin/shutdown', '-h', '+1', 'Shutdown requested from Orei Control Panel'])
+        subprocess.Popen(['/usr/bin/sudo', '-n', '/usr/sbin/shutdown', '-h', '+1'])
         
         return jsonify({
             'success': True,
@@ -988,7 +990,7 @@ def cancel_shutdown():
     """Cancel a pending system shutdown"""
     try:
         # Cancel any pending shutdown
-        subprocess.run(['/usr/bin/sudo', '/usr/sbin/shutdown', '-c'], check=True)
+        subprocess.run(['/usr/bin/sudo', '-n', '/usr/sbin/shutdown', '-c'], check=True)
         
         logger.info("System shutdown cancelled via web interface")
         
@@ -1026,7 +1028,7 @@ def system_restart():
         logger.warning("System restart requested via web interface")
         
         # Send restart command with a 1-minute delay to allow response
-        subprocess.Popen(['/usr/bin/sudo', '/usr/sbin/shutdown', '-r', '+1', 'Restart requested from Orei Control Panel'])
+        subprocess.Popen(['/usr/bin/sudo', '-n', '/usr/sbin/shutdown', '-r', '+1'])
         
         return jsonify({
             'success': True,
@@ -1046,7 +1048,7 @@ def cancel_restart():
     """Cancel a pending system restart"""
     try:
         # Cancel any pending restart (same as shutdown cancel)
-        subprocess.run(['/usr/bin/sudo', '/usr/sbin/shutdown', '-c'], check=True)
+        subprocess.run(['/usr/bin/sudo', '-n', '/usr/sbin/shutdown', '-c'], check=True)
         
         logger.info("System restart cancelled via web interface")
         
@@ -1101,15 +1103,16 @@ def system_update():
             return jsonify({'success': False, 'error': 'Update script not found or not executable'}), 404
 
         logger.info("System update requested via web interface")
+        # Must match the OREI_UPDATE line in orei-control.sudoers exactly
+        user = pwd.getpwuid(os.getuid()).pw_name
+        group = grp.getgrgid(os.getgid()).gr_name
         cmd = [
             '/usr/bin/sudo', '-n', 'systemd-run',
             f'--unit={UPDATE_UNIT}', '--collect',
-            f'--uid={os.getuid()}', f'--gid={os.getgid()}',
+            f'--uid={user}', f'--gid={group}',
             f'--working-directory={os.path.dirname(script_path)}',
+            '/bin/bash', script_path,
         ]
-        if os.environ.get('UPDATE_BRANCH'):
-            cmd.append(f"--setenv=UPDATE_BRANCH={os.environ['UPDATE_BRANCH']}")
-        cmd += ['/bin/bash', script_path]
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         if result.returncode != 0:

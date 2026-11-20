@@ -23,7 +23,8 @@ if ! sudo cp -a "$APP_DIR" "${BACKUP_DIR}/${backup_name}"; then
 fi
 sudo find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name "backup_*" | sort -r | tail -n +$((KEEP_BACKUPS + 1)) | sudo xargs -r rm -rf
 
-"$APP_DIR/update-app.sh"
+# Run as the service user, which owns the checkout. Pass UPDATE_BRANCH through if set.
+sudo -u orei ${UPDATE_BRANCH:+UPDATE_BRANCH="$UPDATE_BRANCH"} "$APP_DIR/update-app.sh"
 rc=$?
 
 case $rc in
