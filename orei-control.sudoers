@@ -1,0 +1,14 @@
+# Installed to /etc/sudoers.d/orei-control (mode 0440) by setup.sh and
+# migrate-service-user.sh. Root commands the orei service user may run.
+#
+# Exact command lines only, no wildcards. A wildcard on the systemd-run line
+# would let the caller append --uid=0 and run the update as root. The update
+# unit always runs as orei.
+#
+# Keep in sync with the calls in app.py and update-app.sh.
+
+Cmnd_Alias OREI_POWER   = /usr/sbin/shutdown -h +1, /usr/sbin/shutdown -r +1, /usr/sbin/shutdown -c
+Cmnd_Alias OREI_SERVICE = /usr/bin/systemctl restart orei-control.service, /usr/bin/journalctl -u orei-control.service -n 20 --no-pager
+Cmnd_Alias OREI_UPDATE  = /usr/bin/systemd-run --unit=orei-update --collect --uid=orei --gid=orei --working-directory=/opt/orei-control /bin/bash /opt/orei-control/update-app.sh
+
+orei ALL=(root) NOPASSWD: OREI_POWER, OREI_SERVICE, OREI_UPDATE
