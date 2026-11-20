@@ -492,6 +492,28 @@ def send_roku_command(ip, command):
     except requests.exceptions.RequestException:
         return False
 
+# Long press: the Roku sees the key held for ROKU_HOLD_SECONDS (e.g. OK opens an app's context menu)
+ROKU_HOLD_SECONDS = 1.0
+
+
+def send_roku_hold(ip, command):
+    """Send keydown, wait, then keyup. keyup is always attempted so the key never stays down."""
+    if not valid_roku_ip(ip) or not ROKU_KEY_PATTERN.match(str(command)):
+        return False
+    try:
+        response = requests.post(f"http://{ip}:8060/keydown/{command}", timeout=5)
+        if response.status_code != 200:
+            return False
+        time.sleep(ROKU_HOLD_SECONDS)
+    except requests.exceptions.RequestException:
+        return False
+    finally:
+        try:
+            requests.post(f"http://{ip}:8060/keyup/{command}", timeout=5)
+        except requests.exceptions.RequestException:
+            pass
+    return True
+
 # Launch Roku app
 def launch_roku_app(ip, app_id):
     """Launch specific app on Roku device"""
@@ -955,7 +977,10 @@ def roku_command():
             return jsonify({'success': False, 'error': 'Invalid Roku command'}), 400
 
         # Send command
-        success = send_roku_command(ip, command)
+        if data.get('hold') is True:
+            success = send_roku_hold(ip, command)
+        else:
+            success = send_roku_command(ip, command)
         
         return jsonify({
             'success': success,
