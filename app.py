@@ -651,20 +651,16 @@ def render_page(path):
 
 
 @app.route('/')
+@app.route('/next')
 def index():
-    return render_page('static/index.html')
+    """The TV-first UI (static/next). /next stays as an alias for bookmarks made during testing."""
+    return render_page('static/next/index.html')
 
 
 @app.route('/classic')
 def classic():
-    """The original Bootstrap UI, kept available after the default changes"""
+    """The original Bootstrap UI"""
     return render_page('static/index.html')
-
-
-@app.route('/next')
-def next_ui():
-    """The TV-first UI (static/next), served here until it becomes the default"""
-    return render_page('static/next/index.html')
 
 def get_running_commit():
     """Commit checked out when this process started. The UI compares it to the update target."""
