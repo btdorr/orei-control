@@ -44,7 +44,7 @@ A comprehensive web-based control interface for the Orei UHD-401MV HDMI Multivie
 - **Toast Notifications**: User feedback for all actions and status changes
 
 ### Technical Features
-- **Serialized Commands**: One RS-232 command at a time under a lock, with a 200ms settle before reading the response
+- **Serialized Commands**: One RS-232 command at a time under a lock. A response ends after 100ms of silence from the device (2s cap), so multi-line replies arrive complete
 - **Command History**: Last 50 RS-232 commands and responses, kept in memory
 - **Debug Console**: Send custom commands for testing and troubleshooting
 - **Reconnect on Error**: A serial error marks the port disconnected, and the next command reopens it
@@ -123,7 +123,7 @@ OREI_CONFIG=app_config_dev.json python app.py --port 8080 --debug
 - **Baud Rate**: 115200
 - **Data Bits**: 8, Stop Bits: 1, Parity: None
 - **Timeout**: 2 seconds
-- **Command Delay**: 200ms between sequential commands
+- **Response End**: 100ms of silence after the last byte (`QUIET_GAP`), 2s cap if nothing arrives
 
 ### Runtime Files
 These live in the app's working directory and are gitignored, so updates never overwrite them.

@@ -40,7 +40,7 @@ class Config:
         self.SERIAL_PORT = '/dev/serial0'  # Default Raspberry Pi serial port
         self.BAUD_RATE = 115200
         self.TIMEOUT = 2
-        self.COMMAND_DELAY = 0.2  # Increased delay between commands
+        self.QUIET_GAP = 0.1  # Seconds of silence that end a response (see send_command)
         self.load_config()
     
     def load_config(self):
@@ -505,28 +505,26 @@ class SerialManager:
                 self.serial_port.write(command.encode('ascii'))
                 logger.debug(f"Sent command: {command}")
                 
-                # Wait for response
-                time.sleep(config.COMMAND_DELAY)
-                
-                # Read response with improved timeout handling
-                response_lines = []
+                # Read until the device goes quiet. The Orei starts replying in
+                # ~55ms and streams each reply without pauses (measured max gap
+                # between chunks: 2ms, even for the 60-line help!), so QUIET_GAP
+                # of silence after the last byte means the reply is complete.
+                # TIMEOUT caps the wait when nothing arrives.
+                received = bytearray()
                 start_time = time.time()
-                
+                last_byte_time = None
+
                 while (time.time() - start_time) < config.TIMEOUT:
-                    if self.serial_port.in_waiting:
-                        try:
-                            line = self.serial_port.readline().decode('ascii', errors='ignore').strip()
-                            if line:
-                                response_lines.append(line)
-                                # Check for command completion indicators
-                                if any(keyword in line.lower() for keyword in 
-                                       ['on', 'off', 'hdmi', 'mode', 'screen', 'finished', 'ok']):
-                                    break
-                        except Exception:
-                            break
+                    waiting = self.serial_port.in_waiting
+                    if waiting:
+                        received += self.serial_port.read(waiting)
+                        last_byte_time = time.time()
+                    elif last_byte_time is not None and time.time() - last_byte_time >= config.QUIET_GAP:
+                        break
                     else:
-                        time.sleep(0.01)
-                
+                        time.sleep(0.005)
+
+                response_lines = [line.strip() for line in received.decode('ascii', errors='ignore').splitlines() if line.strip()]
                 response = ' '.join(response_lines) if response_lines else "No response"
                 
                 # Log command and response
