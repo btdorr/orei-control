@@ -11,6 +11,11 @@ import { Roku } from './roku.js';
 
 const $ = id => document.getElementById(id);
 
+// Replace an element's HTML only when it changed, so unrelated taps don't recreate buttons
+function setHTML(el, html) {
+    if (el._html !== html) { el.innerHTML = html; el._html = html; }
+}
+
 function renderStatus() {
     const el = $('status');
     let s = 'on', text = 'Matrix on';
@@ -46,10 +51,21 @@ function renderStatus() {
     }
 }
 
+// Rebuild the TV only when what it shows changes. Selecting a window just moves the highlight,
+// so Safari does not repaint every window on each tap.
+let screenKey = '';
 function renderScreen() {
     const layout = currentLayout();
     const sound = audioInput();
-    $('screen').innerHTML = windowRects(layout).map(([x, y, w, h], i) => {
+    const rects = windowRects(layout);
+    const key = JSON.stringify([rects, state.windowInputs, state.inputsKnown, sound, state.muted,
+        rects.map((_, i) => inputName(state.windowInputs[i + 1]))]);
+    if (key === screenKey) {
+        for (const el of $('screen').children) el.setAttribute('aria-pressed', String(Number(el.dataset.win) === state.selected));
+        return;
+    }
+    screenKey = key;
+    $('screen').innerHTML = rects.map(([x, y, w, h], i) => {
         const win = i + 1;
         const hdmi = state.windowInputs[win];
         const small = w < 30 || h < 40;
@@ -72,31 +88,40 @@ function renderScreen() {
 
 function renderLayouts() {
     const current = currentLayout().id;
-    $('layouts').innerHTML = LAYOUTS.map(l => {
+    setHTML($('layouts'), LAYOUTS.map(l => {
         const rects = l.id === 'pip' ? [[0, 0, 100, 100], [70, 8, 25, 25]] : l.rects;
         const shapes = rects.map(([x, y, w, h]) => `<rect x="${x * 1.6}" y="${y * 0.9}" width="${w * 1.6}" height="${h * 0.9}" rx="2"/>`).join('');
         return `<button class="lay" data-layout="${l.id}" aria-pressed="${current === l.id}" title="${l.label}">
             <svg viewBox="0 0 160 90" aria-hidden="true">${shapes}</svg><span>${l.label}</span></button>`;
-    }).join('');
+    }).join(''));
     $('h-lay').textContent = `Layout: ${currentLayout().label}`;
     const shape = [3, 4, 5].includes(state.mode);
     $('shapeOpts').hidden = !shape;
     if (shape) {
-        $('shapeSeg').innerHTML = [[1, 'Fill', 'Fill the window'], [2, '16:9', 'Keep 16:9']].map(([v, text, label]) =>
-            `<button data-aspect="${v}" aria-pressed="${state.aspect === v}" aria-label="${label}">${text}</button>`).join('');
+        setHTML($('shapeSeg'), [[1, 'Fill', 'Fill the window'], [2, '16:9', 'Keep 16:9']].map(([v, text, label]) =>
+            `<button data-aspect="${v}" aria-pressed="${state.aspect === v}" aria-label="${label}">${text}</button>`).join(''));
     }
     const pip = current === 'pip';
     $('insetOpts').hidden = !pip;
     if (pip) {
-        $('insetCorner').innerHTML = PIP_CORNERS.map(([v, glyph, label]) =>
-            `<button data-pip-position="${v}" aria-pressed="${state.pipPosition === v}" aria-label="${label}">${glyph}</button>`).join('');
-        $('insetSize').innerHTML = PIP_SIZES.map(([v, glyph, label]) =>
-            `<button data-pip-size="${v}" aria-pressed="${state.pipSize === v}" aria-label="${label}">${glyph}</button>`).join('');
+        setHTML($('insetCorner'), PIP_CORNERS.map(([v, glyph, label]) =>
+            `<button data-pip-position="${v}" aria-pressed="${state.pipPosition === v}" aria-label="${label}">${glyph}</button>`).join(''));
+        setHTML($('insetSize'), PIP_SIZES.map(([v, glyph, label]) =>
+            `<button data-pip-size="${v}" aria-pressed="${state.pipSize === v}" aria-label="${label}">${glyph}</button>`).join(''));
     }
 }
 
+let sourcesKey = '';
 function renderSources() {
     $('h-src').textContent = `Input for window ${state.selected}`;
+    const key = JSON.stringify([1, 2, 3, 4].map(h => [inputName(h), hasRoku(h)]));
+    if (key === sourcesKey) {
+        for (const el of $('sources').children) {
+            el.setAttribute('aria-pressed', String(state.windowInputs[state.selected] === Number(el.dataset.input)));
+        }
+        return;
+    }
+    sourcesKey = key;
     $('sources').innerHTML = [1, 2, 3, 4].map(hdmi => `<button class="src" style="--c:var(--in${hdmi})" data-input="${hdmi}" aria-pressed="${state.windowInputs[state.selected] === hdmi}">
         <span><b>${esc(inputName(hdmi))}</b><small>HDMI ${hdmi}${hasRoku(hdmi) ? '' : ', no Roku'}</small></span></button>`).join('');
 }
@@ -130,7 +155,7 @@ function renderSound() {
         const hdmi = state.audioSource;
         chips.push(`<button class="chip" data-audio="${hdmi}" style="--c:var(--in${hdmi})" aria-pressed="true"><i></i>${esc(inputName(hdmi))}, off screen</button>`);
     }
-    $('soundSrc').innerHTML = chips.join('');
+    setHTML($('soundSrc'), chips.join(''));
 }
 
 let remoteKey = '';

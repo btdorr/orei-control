@@ -140,11 +140,13 @@ button:disabled { opacity: 0.5; cursor: default; }
     position: absolute; border: 0; padding: 0; cursor: pointer; text-align: left;
     background: color-mix(in srgb, var(--c) 42%, var(--screen));
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.6);
-    transition: background-color 0.15s;
     color: #fff;
 }
 .win.inset { box-shadow: 0 0 0 2px var(--screen), 0 6px 18px rgb(0 0 0 / 0.5); border-radius: 3px; z-index: 4; }
-.win:hover { background: color-mix(in srgb, var(--c) 52%, var(--screen)); }
+/* Hover only with a real pointer. iPad Safari keeps :hover on the tapped element. */
+@media (hover: hover) {
+    .win:hover { background: color-mix(in srgb, var(--c) 52%, var(--screen)); }
+}
 .win[aria-pressed="true"] { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 5px var(--c); z-index: 1; }
 .win.inset[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--screen), inset 0 0 0 3px #fff, inset 0 0 0 5px var(--c); z-index: 5; }
 .win .lbl {
@@ -173,7 +175,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .lay[aria-pressed="true"] span { color: var(--ink); font-weight: 600; }
 /* Windows drawn solid with clear gaps, so each layout reads at a glance */
 .lay rect { fill: color-mix(in srgb, var(--muted) 70%, var(--surface-2)); stroke: var(--surface-2); stroke-width: 4; }
-.lay:hover rect { fill: var(--muted); }
+@media (hover: hover) { .lay:hover rect { fill: var(--muted); } }
 .lay[aria-pressed="true"] rect { fill: var(--ink); stroke: var(--surface); }
 .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
 .panel-head h2 { margin: 0; }
