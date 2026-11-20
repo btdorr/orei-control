@@ -432,8 +432,8 @@ export const RokuControl = {
                             </button>
                         </div>
                         <div class="col-4">
-                            <button class="btn btn-roku btn-sm w-100" data-hdmi="${hdmi}" data-command="Play">
-                                <i class="bi bi-play-pause"></i>
+                            <button class="btn btn-roku btn-sm w-100" data-hdmi="${hdmi}" data-command="Play" aria-label="Play/Pause" title="Play/Pause">
+                                <i class="bi bi-play-fill"></i><i class="bi bi-pause-fill"></i>
                             </button>
                         </div>
                         <div class="col-4">

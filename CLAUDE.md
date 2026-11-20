@@ -41,14 +41,16 @@ Production runs `gunicorn --bind 127.0.0.1:5000 --workers 1 --threads 4 app:app`
 - The serial port is opened with `exclusive=True`. Lock, history, and the serial handle are per process, so the service must stay at 1 gunicorn worker. Use threads for concurrency. A second worker would fail to open the port.
 
 ### Frontend (`static/`)
+- Two UIs share the API. `/` (and `/next`) serves the TV-first UI in `static/next/` (no Bootstrap, modules in `static/next/js/`, protocol strings in `device.js`). `/classic` serves the original Bootstrap UI in `static/index.html` and `static/js/`. The rest of this section describes the classic UI unless it names `static/next`.
+- `static/next` keeps window inputs per mode (`inputsByMode`), because the matrix stores a separate window-to-input assignment for each mode. It also saves `submode`, `pipPosition`, and `pipSize` in `ui_state.json` for first paint.
 - `index.html` loads Bootstrap 5 from CDN and `js/main.js` as `type="module"`. `main.js` imports every module and initializes them.
 - Each module exports a singleton object (`DeviceControl`, `DisplayManager`, `AudioControl`, `RokuControl`, ...). Shared state lives on `window.oreiApp` (`currentMode`, `windowInputs`, `selectedWindow`). Some modules also register on `window` (`window.CommandHistory`, `window.RokuControl`) for cross-module calls.
 - Cross-module updates use DOM `CustomEvent`s on `document`, e.g. `windowInputsChanged` from `display.js`, which drives which Roku remotes are shown.
 - All device traffic goes through `api.js`, which posts raw RS-232 strings to `/api/command`. Device protocol strings (`r multiview!`, `s multiview 5!`) are built in the frontend modules. `rs-232_commands.md` is the protocol reference.
 - No cache-busting query strings. nginx sends `Cache-Control: no-cache` for `/static/`, so browsers revalidate every file on load and never mix old and new modules after an update.
 - Theming is CSS variables in `styles.css`. Changes must work in both light and dark themes.
-- `index()` serves `static/index.html` with `__APP_TITLE__` and `__APP_SUBTITLE__` replaced from `branding.json` (HTML-escaped, defaults in `DEFAULT_BRANDING`). Opening the HTML file directly shows the raw tokens.
-- First paint uses the last known state: `index()` embeds `ui_state.json` as `window.oreiInitialState` (`__APP_STATE__`), `UiState.applyAppState()` runs before modules init, `UiState.applyControls()` after. Call `UiState.save()` after any UI change to mode, window inputs, audio source, volume, or mute. `POST /api/ui-state` validates every field (`validate_ui_state`).
+- `render_page()` serves either UI's HTML with `__APP_TITLE__` and `__APP_SUBTITLE__` replaced from `branding.json` (HTML-escaped, defaults in `DEFAULT_BRANDING`). Opening the HTML file directly shows the raw tokens.
+- First paint uses the last known state: `render_page()` embeds `ui_state.json` as `window.oreiInitialState` (`__APP_STATE__`), `UiState.applyAppState()` runs before modules init, `UiState.applyControls()` after. Call `UiState.save()` after any UI change to mode, window inputs, audio source, volume, or mute. `POST /api/ui-state` validates every field (`validate_ui_state`).
 - Serial commands run one at a time, so ordering decides how fast the UI updates. `setDisplayMode` draws the remotes, input controls, and diagram right after `s multiview`, from the last known window inputs, then reads the inputs, then the Advanced-tab mode settings. `refreshAll` reads window inputs before mode settings too. Keep Remote Control tab rendering ahead of slower reads.
 - `roku.js` dispatches `rokuMappingsChanged` when mappings load or change. `display.js` rebuilds window input and audio source labels from `window.RokuControl.mappings`.
 

@@ -127,6 +127,24 @@ def validate_ui_state(data):
         clean['volume'] = data['volume']
     if isinstance(data.get('muted'), bool):
         clean['muted'] = data['muted']
+    # The matrix keeps window inputs per mode. Mode -> {window: input}, used by the /next UI
+    by_mode = data.get('inputsByMode')
+    if isinstance(by_mode, dict):
+        valid_modes = {}
+        for mode, inputs in by_mode.items():
+            if str(mode) in ('1', '2', '3', '4', '5') and isinstance(inputs, dict):
+                valid = {str(k): v for k, v in inputs.items() if str(k) in ('1', '2', '3', '4') and _int_in(v, 1, 4)}
+                if valid:
+                    valid_modes[str(mode)] = valid
+        if valid_modes:
+            clean['inputsByMode'] = valid_modes
+    # Layout variant (PBP/triple/quad mode) and PIP placement, used by the /next UI
+    if _int_in(data.get('submode'), 1, 3):
+        clean['submode'] = data['submode']
+    if _int_in(data.get('pipPosition'), 1, 4):
+        clean['pipPosition'] = data['pipPosition']
+    if _int_in(data.get('pipSize'), 1, 3):
+        clean['pipSize'] = data['pipSize']
     return clean
 
 
@@ -619,9 +637,9 @@ class SerialManager:
 serial_manager = SerialManager()
 
 # Routes
-@app.route('/')
-def index():
-    with open('static/index.html', 'r') as f:
+def render_page(path):
+    """Serve an HTML page with branding and the last known device state filled in"""
+    with open(path, 'r') as f:
         page = f.read()
     branding = load_branding()
     page = page.replace('__APP_TITLE__', html.escape(branding['title']))
@@ -630,6 +648,19 @@ def index():
     # '<' is escaped so the JSON cannot close the surrounding <script> tag.
     page = page.replace('__APP_STATE__', json.dumps(load_ui_state()).replace('<', '\\u003c'))
     return page
+
+
+@app.route('/')
+@app.route('/next')
+def index():
+    """The TV-first UI (static/next). /next stays as an alias for bookmarks made during testing."""
+    return render_page('static/next/index.html')
+
+
+@app.route('/classic')
+def classic():
+    """The original Bootstrap UI"""
+    return render_page('static/index.html')
 
 def get_running_commit():
     """Commit checked out when this process started. The UI compares it to the update target."""
@@ -1011,6 +1042,8 @@ def set_ui_state():
         state.update(update)
         if 'windowInputs' in update:
             state['windowInputs'] = {**load_ui_state().get('windowInputs', {}), **update['windowInputs']}
+        if 'inputsByMode' in update:
+            state['inputsByMode'] = {**load_ui_state().get('inputsByMode', {}), **update['inputsByMode']}
         save_ui_state(state)
         return jsonify({'success': True, 'state': state})
     except Exception as e:
