@@ -65,6 +65,11 @@ export const RokuControl = {
         });
     },
     
+    // Tell other modules (window input dropdowns) that device names may have changed
+    notifyMappingsChanged() {
+        document.dispatchEvent(new CustomEvent('rokuMappingsChanged'));
+    },
+
     // Load Roku device mappings
     async loadMappings() {
         try {
@@ -75,6 +80,7 @@ export const RokuControl = {
                 this.mappings = data.mappings;
                 this.updateMappingUI();
                 this.updateRokuRemotes();
+                this.notifyMappingsChanged();
             }
         } catch (error) {
             console.error('Error loading Roku mappings:', error);
@@ -185,6 +191,7 @@ export const RokuControl = {
                 this.mappings = mappings;
                 this.updateMappingUI();
                 this.updateRokuRemotes();
+                this.notifyMappingsChanged();
                 Utils.showToast('Roku mappings saved successfully', 'success');
                 
                 // Close the modal
@@ -241,6 +248,7 @@ export const RokuControl = {
             if (data.success) {
                 this.updateMappingUI();
                 this.updateRokuRemotes();
+                this.notifyMappingsChanged();
                 Utils.showToast('Mapping removed successfully', 'success');
             }
         } catch (error) {

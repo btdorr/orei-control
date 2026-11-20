@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orei UHD-401MV Control Panel</title>
+    <title>__APP_TITLE__</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="static/styles.css" rel="stylesheet">
@@ -15,9 +15,9 @@
             <div class="col">
                 <h1 class="h2 mb-0">
                     <i class="bi bi-display me-2"></i>
-                    Orei UHD-401MV Control Panel
+                    __APP_TITLE__
                 </h1>
-                <p class="text-muted mb-0">HDMI Multiviewer RS-232 Control Interface <span id="versionInfo">(loading...)</span></p>
+                <p class="text-muted mb-0">__APP_SUBTITLE__</p>
             </div>
             <div class="col-auto">
                 <div class="d-flex align-items-center">
@@ -32,6 +32,8 @@
                             <i class="bi bi-gear-fill"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="systemDropdown">
+                            <li><span class="dropdown-item-text text-muted small" id="versionInfo">Version loading...</span></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><h6 class="dropdown-header">System Control</h6></li>
                             <li><a class="dropdown-item text-warning" href="#" id="shutdownMenuItem">
                                 <i class="bi bi-power me-2"></i>Shutdown System
@@ -121,6 +123,21 @@
                                     <option value="3">HDMI 3</option>
                                     <option value="4">HDMI 4</option>
                                 </select>
+
+                                <!-- Volume -->
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Volume</span>
+                                    <span id="remoteVolumeValue">50</span>
+                                </label>
+                                <div class="volume-control mb-3">
+                                    <button class="btn btn-outline-secondary" type="button" id="remoteVolumeDownBtn" title="Volume Down">
+                                        <i class="bi bi-volume-down"></i>
+                                    </button>
+                                    <input type="range" class="form-range" id="remoteVolumeSlider" min="0" max="100" value="50" aria-label="Volume">
+                                    <button class="btn btn-outline-secondary" type="button" id="remoteVolumeUpBtn" title="Volume Up">
+                                        <i class="bi bi-volume-up"></i>
+                                    </button>
+                                </div>
 
                                 <!-- Mute Toggle -->
                                 <div class="form-check form-switch">
@@ -690,6 +707,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="static/js/main.js?v=20261120"></script>
+    <script type="module" src="static/js/main.js?v=20261121"></script>
 </body>
 </html>

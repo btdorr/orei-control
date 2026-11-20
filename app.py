@@ -5,6 +5,7 @@ Flask-based web application for RS-232 control
 """
 
 import argparse
+import html
 import json
 import os
 import time
@@ -75,6 +76,29 @@ config = Config()
 serial_port = None
 serial_lock = threading.Lock()
 command_history = []
+
+# Page title and subtitle, read on every page load so edits apply on refresh
+BRANDING_FILE = 'branding.json'
+DEFAULT_BRANDING = {
+    'title': 'Orei UHD-401MV Control Panel',
+    'subtitle': 'HDMI Multiviewer RS-232 Control Interface',
+}
+
+
+def load_branding():
+    """Defaults overridden by any string values in branding.json"""
+    branding = dict(DEFAULT_BRANDING)
+    if os.path.exists(BRANDING_FILE):
+        try:
+            with open(BRANDING_FILE, 'r') as f:
+                data = json.load(f)
+            for key in DEFAULT_BRANDING:
+                if isinstance(data.get(key), str):
+                    branding[key] = data[key]
+        except (json.JSONDecodeError, IOError, AttributeError) as e:
+            logger.warning(f"Ignoring invalid {BRANDING_FILE}: {e}")
+    return branding
+
 
 # Roku device configuration file
 ROKU_CONFIG_FILE = 'roku_devices.json'
@@ -514,7 +538,11 @@ serial_manager = SerialManager()
 @app.route('/')
 def index():
     with open('static/index.html', 'r') as f:
-        return f.read()
+        page = f.read()
+    branding = load_branding()
+    page = page.replace('__APP_TITLE__', html.escape(branding['title']))
+    page = page.replace('__APP_SUBTITLE__', html.escape(branding['subtitle']))
+    return page
 
 def get_running_commit():
     """Commit checked out when this process started. The UI compares it to the update target."""

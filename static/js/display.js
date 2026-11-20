@@ -23,6 +23,11 @@ export const DisplayManager = {
         }
         
         // Listen for window inputs changes to update controls
+        document.addEventListener('rokuMappingsChanged', () => {
+            this.updateWindowInputControls();
+            this.fillInputOptions(document.getElementById('windowInputSelect'));
+        });
+
         document.addEventListener('windowInputsChanged', () => {
             this.updateWindowInputControls();
         });
@@ -426,6 +431,26 @@ export const DisplayManager = {
         }
     },
     
+    // Option label for an HDMI input: "Roku Name (HDMI n)" if a Roku is mapped, else "HDMI n"
+    inputLabel(hdmi) {
+        const name = window.RokuControl?.mappings?.[hdmi]?.name;
+        return name ? `${name} (HDMI ${hdmi})` : `HDMI ${hdmi}`;
+    },
+
+    // Replace a select's options with HDMI 1-4, keeping its current value
+    fillInputOptions(select) {
+        if (!select) return;
+        const value = select.value;
+        select.replaceChildren();
+        for (let hdmi = 1; hdmi <= 4; hdmi++) {
+            const option = document.createElement('option');
+            option.value = String(hdmi);
+            option.textContent = this.inputLabel(hdmi);
+            select.appendChild(option);
+        }
+        if (value) select.value = value;
+    },
+
     // Update window input controls based on current display mode
     updateWindowInputControls() {
         const container = document.getElementById('windowInputControls');
@@ -449,12 +474,7 @@ export const DisplayManager = {
             const select = document.createElement('select');
             select.className = 'form-select form-select-sm'; // Smaller select for compact layout
             select.id = `windowInput${i}`;
-            select.innerHTML = `
-                <option value="1">HDMI 1</option>
-                <option value="2">HDMI 2</option>
-                <option value="3">HDMI 3</option>
-                <option value="4">HDMI 4</option>
-            `;
+            this.fillInputOptions(select);
             
             // Set current value
             const currentInput = window.oreiApp?.windowInputs?.[i] || i;

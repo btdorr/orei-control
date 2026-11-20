@@ -4,6 +4,9 @@ import { API } from './api.js';
 import { Utils } from './utils.js';
 
 export const AudioControl = {
+    VOLUME_SLIDERS: ['volumeSlider', 'remoteVolumeSlider'],
+    VOLUME_DISPLAYS: ['volumeValue', 'remoteVolumeValue'],
+
     // Initialize audio controls
     init() {
         this.setupEventListeners();
@@ -31,38 +34,28 @@ export const AudioControl = {
             });
         }
         
-        // Volume slider
-        const volumeSlider = document.getElementById('volumeSlider');
-        if (volumeSlider) {
-            // Update display on input
-            volumeSlider.addEventListener('input', (e) => {
+        // Volume sliders (Remote Control tab and Advanced Settings), kept in sync
+        const debouncedSetVolume = Utils.debounce((value) => {
+            this.setVolume(value);
+        }, 300);
+
+        for (const id of this.VOLUME_SLIDERS) {
+            const slider = document.getElementById(id);
+            if (!slider) continue;
+            slider.addEventListener('input', (e) => {
                 this.updateVolumeDisplay(e.target.value);
             });
-            
-            // Send command on change (debounced)
-            const debouncedSetVolume = Utils.debounce((value) => {
-                this.setVolume(value);
-            }, 300);
-            
-            volumeSlider.addEventListener('change', (e) => {
+            slider.addEventListener('change', (e) => {
                 debouncedSetVolume(e.target.value);
             });
         }
-        
-        // Volume up button
-        const volumeUpBtn = document.getElementById('volumeUpBtn');
-        if (volumeUpBtn) {
-            volumeUpBtn.addEventListener('click', () => {
-                this.adjustVolume(5);
-            });
+
+        // Volume up/down buttons on both tabs
+        for (const id of ['volumeUpBtn', 'remoteVolumeUpBtn']) {
+            document.getElementById(id)?.addEventListener('click', () => this.adjustVolume(5));
         }
-        
-        // Volume down button
-        const volumeDownBtn = document.getElementById('volumeDownBtn');
-        if (volumeDownBtn) {
-            volumeDownBtn.addEventListener('click', () => {
-                this.adjustVolume(-5);
-            });
+        for (const id of ['volumeDownBtn', 'remoteVolumeDownBtn']) {
+            document.getElementById(id)?.addEventListener('click', () => this.adjustVolume(-5));
         }
         
         // Mute switch (Advanced Settings)
@@ -92,11 +85,15 @@ export const AudioControl = {
         await API.sendCommandSilent(`s output audio vol ${volume}!`);
     },
     
-    // Update volume display
+    // Update every volume slider and readout to the same value
     updateVolumeDisplay(volume) {
-        const display = document.getElementById('volumeValue');
-        if (display) {
-            display.textContent = volume;
+        for (const id of this.VOLUME_SLIDERS) {
+            const slider = document.getElementById(id);
+            if (slider) slider.value = volume;
+        }
+        for (const id of this.VOLUME_DISPLAYS) {
+            const display = document.getElementById(id);
+            if (display) display.textContent = volume;
         }
     },
     
@@ -165,11 +162,7 @@ export const AudioControl = {
         
         // Update volume slider if we got a value
         if (volumeValue !== null) {
-            const volumeSlider = document.getElementById('volumeSlider');
-            if (volumeSlider) {
-                volumeSlider.value = volumeValue;
-                this.updateVolumeDisplay(volumeValue);
-            }
+            this.updateVolumeDisplay(volumeValue);
         }
         
         // Get mute status
@@ -195,8 +188,7 @@ export const AudioControl = {
         const currentVolume = parseInt(volumeSlider.value);
         const newVolume = Math.max(0, Math.min(100, currentVolume + delta));
         
-        // Update slider and display
-        volumeSlider.value = newVolume;
+        // Update sliders and displays
         this.updateVolumeDisplay(newVolume);
         
         // Send command to device
