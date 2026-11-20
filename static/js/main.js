@@ -8,7 +8,7 @@ import { AudioControl } from './audio.js';
 import { CommandHistory } from './commands.js';
 import { Utils } from './utils.js';
 import { RokuControl } from './roku.js';
-import { SystemManager } from './system.js?v=20261120';
+import { SystemManager } from './system.js?v=20261121';
 
 // Global application state
 window.oreiApp = {
@@ -36,7 +36,7 @@ async function loadVersionInfo() {
             const versionElement = document.getElementById('versionInfo');
             console.log('Version element found:', !!versionElement);
             if (versionElement) {
-                versionElement.textContent = `(v${data.version.version})`;
+                versionElement.textContent = `v${data.version.version}`;
                 console.log('Version updated to:', data.version.version);
             }
         } else {
@@ -46,7 +46,7 @@ async function loadVersionInfo() {
         console.error('Failed to load version info:', error);
         const versionElement = document.getElementById('versionInfo');
         if (versionElement) {
-            versionElement.textContent = '(v1.0.0)';
+            versionElement.textContent = 'v?';
         }
     }
 }

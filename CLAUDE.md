@@ -46,6 +46,8 @@ Production runs `gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 app:app` b
 - All device traffic goes through `api.js`, which posts raw RS-232 strings to `/api/command`. Device protocol strings (`r multiview!`, `s multiview 5!`) are built in the frontend modules. `rs-232_commands.md` is the protocol reference.
 - Cache busting is manual query strings (`main.js?v=...`, `system.js?v=...`). Bump them when changing JS that browsers may cache.
 - Theming is CSS variables in `styles.css`. Changes must work in both light and dark themes.
+- `index()` serves `static/index.html` with `__APP_TITLE__` and `__APP_SUBTITLE__` replaced from `branding.json` (HTML-escaped, defaults in `DEFAULT_BRANDING`). Opening the HTML file directly shows the raw tokens.
+- `roku.js` dispatches `rokuMappingsChanged` when mappings load or change. `display.js` rebuilds window input and audio source labels from `window.RokuControl.mappings`.
 
 ## Gotchas
 
