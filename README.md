@@ -35,6 +35,8 @@ A comprehensive web-based control interface for the Orei UHD-401MV HDMI Multivie
 
 ### User Interface
 - **Theme Support**: Auto, Light, and Dark themes with full modal and component coverage
+- **Custom Title**: Page title and subtitle set per install in `branding.json`, no code change
+- **Device Names**: Inputs labeled with the mapped Roku's name, e.g. `Living Room (HDMI 1)`
 - **Responsive Design**: Optimized for desktop, tablet, and mobile devices
 - **Tab Navigation**: Separate Remote Control and Advanced Settings tabs
 - **Modal Dialogs**: Non-intrusive device configuration workflow
@@ -127,7 +129,30 @@ OREI_CONFIG=app_config_dev.json python app.py --port 8080 --debug
 These live in the app's working directory and are gitignored, so updates never overwrite them.
 - `app_config.json`: serial port and baud rate, saved from the Advanced Settings tab. Override the filename with the `OREI_CONFIG` environment variable.
 - `roku_devices.json`: Roku device to HDMI input mappings. Roku IPs are stored here, so update it if devices move to a new subnet. The device names also label the window input and audio source dropdowns and the remote headers, as `Name (HDMI n)`.
-- `branding.json`: optional page title and subtitle. Copy `branding.example.json` and edit it. Changes apply on the next page load, with no restart. Either key can be left out to keep the default.
+- `branding.json`: optional page title and subtitle. See [Branding](#branding).
+
+### Branding
+The page title, browser tab title, and subtitle come from `branding.json` in the app directory (`/opt/orei-control` on a production install).
+
+```bash
+cd /opt/orei-control
+cp branding.example.json branding.json
+nano branding.json
+```
+
+```json
+{
+  "title": "Cold's Matrix",
+  "subtitle": "Video wall controller"
+}
+```
+
+- Refresh the page to see changes. No restart or code change is needed.
+- Leave out a key to keep its default. Defaults are "Orei UHD-401MV Control Panel" and "HDMI Multiviewer RS-232 Control Interface". Use `""` for no subtitle.
+- Text is shown as typed. HTML is not rendered.
+- If the file is not valid JSON, the defaults are used and a warning is logged (`journalctl -u orei-control.service`).
+- The version number always shows after the subtitle and is not part of this file.
+- The file is gitignored, so updates never overwrite it.
 
 ### Network Requirements
 - **Roku Discovery**: Devices must be on same subnet as Raspberry Pi
