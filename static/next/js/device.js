@@ -88,7 +88,14 @@ export const Device = {
         } else if (VARIANT[state.mode]) {
             const match = (await api.command(`r ${VARIANT[state.mode]} mode!`))?.match(/mode (\d)/);
             if (match) update({ submode: Number(match[1]) });
+            await this.readAspect();
         }
+    },
+
+    async readAspect() {
+        if (!VARIANT[state.mode]) return;
+        const reply = await api.command(`r ${VARIANT[state.mode]} aspect!`);
+        if (reply) update({ aspect: /full screen/i.test(reply) ? 1 : 2 });
     },
 
     async readAudio() {
@@ -105,7 +112,7 @@ export const Device = {
 
     async setLayout(layout) {
         const before = { mode: state.mode, submode: state.submode };
-        update({ mode: layout.mode, submode: layout.submode ?? state.submode });
+        update({ mode: layout.mode, submode: layout.submode ?? state.submode, aspect: layout.mode === state.mode ? state.aspect : null });
         if (await api.command(`s multiview ${layout.mode}!`) === null) {
             update(before);
             return;
@@ -114,6 +121,7 @@ export const Device = {
         saveUiState();
         await this.readInputs();
         saveUiState();
+        await this.readAspect();
     },
 
     async setPip(patch) {
@@ -160,19 +168,18 @@ export const Device = {
     async readOutput() {
         const res = await api.command('r output res!');
         const hdcp = await api.command('r output hdcp!');
-        let aspect = null;
-        if (VARIANT[state.mode]) {
-            const reply = await api.command(`r ${VARIANT[state.mode]} aspect!`);
-            if (reply) aspect = /full screen/i.test(reply) ? 1 : 2;
-        }
         return {
             res: RESOLUTIONS.findIndex(r => res?.includes(r)) + 1 || null,
             hdcp: /2\.2/.test(hdcp || '') ? 2 : /1\.4/.test(hdcp || '') ? 1 : /off/i.test(hdcp || '') ? 3 : null,
-            aspect,
         };
     },
 
     setResolution(n) { return api.command(`s output res ${n}!`); },
     setHdcp(n) { return api.command(`s output hdcp ${n}!`); },
-    setAspect(n) { return VARIANT[state.mode] ? api.command(`s ${VARIANT[state.mode]} aspect ${n}!`) : null; },
+    async setAspect(aspect) {
+        if (!VARIANT[state.mode]) return;
+        const before = state.aspect;
+        update({ aspect });
+        if (await api.command(`s ${VARIANT[state.mode]} aspect ${aspect}!`) === null) update({ aspect: before });
+    },
 };

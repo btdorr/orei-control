@@ -68,12 +68,9 @@ function rokuSection() {
 
 function outputSection() {
     if (!output) return '<section><h3>TV output</h3><p class="hint">Reading from the matrix…</p></section>';
-    const aspect = output.aspect ? `<div class="kv"><label for="setAspect">Window shape</label>
-        ${select('setAspect', [[1, 'Fill screen'], [2, 'Keep 16:9']], output.aspect)}</div>` : '';
     return `<section><h3>TV output</h3>
         <div class="kv"><label for="setRes">Resolution</label>${select('setRes', RESOLUTIONS.map((r, i) => [i + 1, resolutionLabel(r)]), output.res)}</div>
-        <div class="kv"><label for="setHdcp">HDCP</label>${select('setHdcp', [[1, 'HDCP 1.4'], [2, 'HDCP 2.2'], [3, 'Off']], output.hdcp)}</div>
-        ${aspect}</section>`;
+        <div class="kv"><label for="setHdcp">HDCP</label>${select('setHdcp', [[1, 'HDCP 1.4'], [2, 'HDCP 2.2'], [3, 'Off']], output.hdcp)}</div></section>`;
 }
 
 function matrixSection() {
@@ -300,7 +297,6 @@ export const Settings = {
             const t = e.target;
             if (t.id === 'setRes') { if (await Device.setResolution(t.value) !== null) output.res = Number(t.value); }
             else if (t.id === 'setHdcp') { if (await Device.setHdcp(t.value) !== null) output.hdcp = Number(t.value); }
-            else if (t.id === 'setAspect') { if (await Device.setAspect(t.value) !== null) output.aspect = Number(t.value); }
             else if (t.id === 'setPort') {
                 const data = await api.post('/api/config/serial', { port: t.value });
                 if (data.success) {

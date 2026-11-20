@@ -73,6 +73,12 @@ function renderLayouts() {
             <svg viewBox="0 0 160 90" aria-hidden="true">${shapes}</svg><span>${l.label}</span></button>`;
     }).join('');
     $('h-lay').textContent = `Layout: ${currentLayout().label}`;
+    const shape = [3, 4, 5].includes(state.mode);
+    $('shapeOpts').hidden = !shape;
+    if (shape) {
+        $('shapeSeg').innerHTML = [[1, 'Fill', 'Fill the window'], [2, '16:9', 'Keep 16:9']].map(([v, text, label]) =>
+            `<button data-aspect="${v}" aria-pressed="${state.aspect === v}" aria-label="${label}">${text}</button>`).join('');
+    }
     const pip = current === 'pip';
     $('insetOpts').hidden = !pip;
     if (pip) {
@@ -195,6 +201,8 @@ export const Views = {
                 if (layout.id !== currentLayout().id) Device.setLayout(layout);
             } else if (d.pipPosition) {
                 Device.setPip({ pipPosition: Number(d.pipPosition) });
+            } else if (d.aspect) {
+                if (state.aspect !== Number(d.aspect)) Device.setAspect(Number(d.aspect));
             } else if (d.pipSize) {
                 Device.setPip({ pipSize: Number(d.pipSize) });
             } else if (d.input) {

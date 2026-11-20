@@ -175,8 +175,10 @@ button:disabled { opacity: 0.5; cursor: default; }
 .lay span { font-size: 12px; color: var(--muted); line-height: 1.15; text-align: center; }
 .lay[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--surface); }
 .lay[aria-pressed="true"] span { color: var(--ink); font-weight: 600; }
-.lay rect { fill: var(--line); stroke: var(--surface-2); stroke-width: 1.5; }
-.lay[aria-pressed="true"] rect { fill: var(--muted); stroke: var(--surface); }
+/* Windows drawn solid with clear gaps, so each layout reads at a glance */
+.lay rect { fill: color-mix(in srgb, var(--muted) 70%, var(--surface-2)); stroke: var(--surface-2); stroke-width: 4; }
+.lay:hover rect { fill: var(--muted); }
+.lay[aria-pressed="true"] rect { fill: var(--ink); stroke: var(--surface); }
 .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
 .panel-head h2 { margin: 0; }
 .inset-opts { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; font-size: 13px; color: var(--muted); }

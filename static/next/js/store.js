@@ -28,6 +28,7 @@ export const state = {
     submode: saved.submode || 1,
     pipPosition: saved.pipPosition || 3,
     pipSize: saved.pipSize || 1,
+    aspect: null,           // PBP/triple/quad window shape: 1 = fill screen, 2 = keep 16:9 (null = not read yet)
     windowInputs: { 1: 1, 2: 2, 3: 3, 4: 4, ...(saved.windowInputs || {}) },
     audioSource: saved.audioSource ?? 0,   // 0 = follow window 1, 1-4 = HDMI input
     volume: saved.volume ?? 50,
