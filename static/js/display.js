@@ -2,6 +2,7 @@
 
 import { API } from './api.js';
 import { Utils } from './utils.js';
+import { UiState } from './state.js';
 
 export const DisplayManager = {
     // Initialize display controls
@@ -228,6 +229,7 @@ export const DisplayManager = {
         
         window.oreiApp.windowInputs[windowNum] = parseInt(input);
         this.updateDiagram();
+        UiState.save();
         Utils.showToast(`Window ${windowNum} set to HDMI ${input}`, 'success');
         
         // Hide input selectors and clear selection

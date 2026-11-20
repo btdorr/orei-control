@@ -47,6 +47,7 @@ Production runs `gunicorn --bind 127.0.0.1:5000 --workers 1 --threads 4 app:app`
 - No cache-busting query strings. nginx sends `Cache-Control: no-cache` for `/static/`, so browsers revalidate every file on load and never mix old and new modules after an update.
 - Theming is CSS variables in `styles.css`. Changes must work in both light and dark themes.
 - `index()` serves `static/index.html` with `__APP_TITLE__` and `__APP_SUBTITLE__` replaced from `branding.json` (HTML-escaped, defaults in `DEFAULT_BRANDING`). Opening the HTML file directly shows the raw tokens.
+- First paint uses the last known state: `index()` embeds `ui_state.json` as `window.oreiInitialState` (`__APP_STATE__`), `UiState.applyAppState()` runs before modules init, `UiState.applyControls()` after. Call `UiState.save()` after any UI change to mode, window inputs, audio source, volume, or mute. `POST /api/ui-state` validates every field (`validate_ui_state`).
 - `roku.js` dispatches `rokuMappingsChanged` when mappings load or change. `display.js` rebuilds window input and audio source labels from `window.RokuControl.mappings`.
 
 ## Security model

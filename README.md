@@ -130,6 +130,7 @@ These live in the app's working directory and are gitignored, so updates never o
 - `app_config.json`: serial port and baud rate, saved from the Advanced Settings tab. Override the filename with the `OREI_CONFIG` environment variable.
 - `roku_devices.json`: Roku device to HDMI input mappings. Roku IPs are stored here, so update it if devices move to a new subnet. The device names also label the window input and audio source dropdowns and the remote headers, as `Name (HDMI n)`.
 - `branding.json`: optional page title and subtitle. See [Branding](#branding).
+- `ui_state.json`: last known display mode, window inputs, audio source, volume, and mute. The page opens in this state, then reads the device and corrects anything that changed (for example, a mode switched with the Orei's own remote). Written by the UI after each refresh and change. Safe to delete.
 
 ### Branding
 The page title, browser tab title, and subtitle come from `branding.json` in the app directory (`/opt/orei-control` on a production install).

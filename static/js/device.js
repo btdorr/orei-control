@@ -4,6 +4,7 @@ import { API } from './api.js';
 import { Utils } from './utils.js';
 import { DisplayManager } from './display.js';
 import { AudioControl } from './audio.js';
+import { UiState } from './state.js';
 
 export const DeviceControl = {
     // Initialize device control
@@ -328,6 +329,7 @@ export const DeviceControl = {
         // Control tab depends on them. The diagram uses them for PIP layout.
         await DisplayManager.updateModeSettings();
         DisplayManager.updateDiagram();
+        UiState.save();
     },
     
     // Refresh all settings
@@ -351,16 +353,14 @@ export const DeviceControl = {
             if (displayMode) displayMode.value = window.oreiApp.currentMode;
             if (displayModeAdvanced) displayModeAdvanced.value = window.oreiApp.currentMode;
             
-            // Update mode settings and query device for current values
-            await DisplayManager.updateModeSettings();
-            
-            // Get window inputs
+            // Window inputs first: the Remote Control tab and Roku remotes
+            // depend on them. getWindowInputs() fires windowInputsChanged,
+            // which redraws the remotes and input controls.
             await DisplayManager.getWindowInputs();
-            
-            // Update window input controls after window inputs are loaded
-            DisplayManager.updateWindowInputControls();
-            
-            // Now update the diagram after windowInputs are loaded
+            DisplayManager.updateDiagram();
+
+            // Advanced Settings values for the current mode
+            await DisplayManager.updateModeSettings();
             DisplayManager.updateDiagram();
             
             // Load audio settings
@@ -369,6 +369,9 @@ export const DeviceControl = {
             // Get output settings
             await this.loadOutputSettings();
             
+            // Remember this state for the next page load
+            UiState.save();
+
             // Show completion message
             Utils.showToast('Device settings refreshed successfully', 'success');
             

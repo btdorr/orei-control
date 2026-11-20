@@ -9,6 +9,7 @@ import { CommandHistory } from './commands.js';
 import { Utils } from './utils.js';
 import { RokuControl } from './roku.js';
 import { SystemManager } from './system.js';
+import { UiState } from './state.js';
 
 // Global application state
 window.oreiApp = {
@@ -66,6 +67,9 @@ async function initialize() {
         // Initialize command history
         CommandHistory.init();
         
+        // Start from the last known device state so the first paint is right
+        UiState.applyAppState();
+
         // Initialize display controls
         DisplayManager.init();
         
@@ -78,6 +82,8 @@ async function initialize() {
         // Initialize device manager for configuration
         DeviceManager.init();
         
+        UiState.applyControls();
+
         // Initialize device control and check status
         await DeviceControl.initialize();
         
