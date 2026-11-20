@@ -36,7 +36,7 @@ async function loadVersionInfo() {
             const versionElement = document.getElementById('versionInfo');
             console.log('Version element found:', !!versionElement);
             if (versionElement) {
-                versionElement.textContent = `Version ${data.version.version}`;
+                versionElement.textContent = `v${data.version.version}`;
                 console.log('Version updated to:', data.version.version);
             }
         } else {
@@ -46,7 +46,7 @@ async function loadVersionInfo() {
         console.error('Failed to load version info:', error);
         const versionElement = document.getElementById('versionInfo');
         if (versionElement) {
-            versionElement.textContent = 'Version unknown';
+            versionElement.textContent = 'v?';
         }
     }
 }
