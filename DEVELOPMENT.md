@@ -18,8 +18,10 @@ Development Environment:
 ├── Branch: develop
 ├── Port: 8080 (direct access)
 ├── Service: Flask dev server
-└── Hardware: /dev/ttyUSB0 (USB adapter)
+└── Hardware: serial port from app_config_dev.json
 ```
+
+`start-dev.sh` runs `python app.py --port 8080 --debug` with `OREI_CONFIG=app_config_dev.json`. Gunicorn ignores these. Production always uses `app_config.json` on port 5000.
 
 ### Branch Strategy
 - **`main`** - Production-ready releases
@@ -121,7 +123,7 @@ git push origin main
 - ✅ Rollback capability on failure
 - ✅ Service health checking
 - ✅ Dependency conflict detection
-- ✅ Zero-downtime deployment process
+- ⚠️ Not zero-downtime: the service is stopped during the update and restarted after
 
 ## 🎯 Deployment Strategies
 
@@ -137,8 +139,14 @@ Production:  /opt/orei-control (port 80 via nginx)
 - Simple setup
 
 **Cons:**
-- Can't test and run production simultaneously
-- Hardware conflicts possible
+- One Orei device and one serial port. Dev and the service can both open `/dev/serial0`, and nothing stops them from interleaving commands. Stop the service before testing dev against the hardware:
+  ```bash
+  sudo systemctl stop orei-control.service
+  ./start-dev.sh
+  # when done: Ctrl+C, then
+  sudo systemctl start orei-control.service
+  ```
+- Dev has its own `roku_devices.json`. Copy it from `/opt/orei-control` to test Roku control with the same mappings.
 
 ### Option 2: Dual Pi Setup (Recommended for Critical Use)
 ```
@@ -195,6 +203,7 @@ Pi 2: Development only (~/orei-control-dev, develop branch)
     "development": true
 }
 ```
+`dev-setup.sh` writes `/dev/ttyUSB0`. On a single Pi wired through GPIO, change it to `/dev/serial0`. The app reads only `serial_port` and `baud_rate`. `debug_mode` and `development` are ignored.
 
 ### Production Config (`app_config.json`)
 ```json
@@ -228,8 +237,7 @@ git reset --hard origin/develop  # Reset to last known good state
 # Check service logs
 sudo journalctl -u orei-control.service -f
 
-# Check application logs
-tail -f /opt/orei-control/gunicorn.log
+# gunicorn output goes to the journal (any gunicorn.log in /opt is stale)
 
 # Test application response
 curl -I http://localhost:5000
@@ -286,6 +294,7 @@ pkill -f "python.*app.py"
 pkill -f "gunicorn.*8080"
 ./start-dev.sh
 ```
+`start-dev.sh` and `stop-dev.sh` run the same `pkill -f "python.*app.py"`. It matches any process whose command line contains both words, including an `ssh host '...'` command that mentions them. Run the scripts from an interactive shell, or stop the dev server by PID.
 
 **Production deployment fails:**
 - Check backup directory exists

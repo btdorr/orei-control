@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Orei UHD-404MV HDMI Multiviewer Control Server
+Orei UHD-401MV HDMI Multiviewer Control Server
 Flask-based web application for RS-232 control
 """
 
