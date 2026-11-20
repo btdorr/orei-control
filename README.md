@@ -247,11 +247,11 @@ nmap -p 8060 --open $(ip route | grep 'scope link' | awk '{print $1}' | head -1)
 - **Backend**: Flask, single file (`app.py`), serialized RS-232 communication
 - **Styling**: Bootstrap 5 (CDN) with custom CSS variables for theming
 - **Communication**: REST API. The UI refreshes device state on load and on the Refresh button, not by polling
-- **Production**: gunicorn on port 5000 behind nginx on port 80, run by `orei-control.service`
+- **Production**: gunicorn (1 worker, 4 threads) on port 5000 behind nginx on port 80, run by `orei-control.service`. One process is required because the serial port is opened exclusively.
 
 ### Key Design Patterns
 - **Event-Driven**: Component communication via custom events
-- **Serialized**: All device communication goes through one lock in `SerialManager`
+- **Serialized**: All device communication goes through one lock in `SerialManager`, and the port is opened exclusively so a second process cannot send commands at the same time
 - **Responsive**: Layouts for phone, tablet, and desktop
 
 ### Versioning

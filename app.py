@@ -408,7 +408,8 @@ class SerialManager:
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
-                timeout=config.TIMEOUT
+                timeout=config.TIMEOUT,
+                exclusive=True  # fail fast if another process holds the port
             )
             self.connected = True
             logger.info(f"Connected to serial port {self.port} at {self.baudrate} baud")

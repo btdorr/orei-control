@@ -76,9 +76,13 @@ export FLASK_ENV=development
 export FLASK_DEBUG=1
 export OREI_CONFIG=app_config_dev.json
 
-# Kill any existing development servers
-pkill -f "python.*app.py" 2>/dev/null || true
-pkill -f "gunicorn.*8080" 2>/dev/null || true
+PID_FILE=".dev-server.pid"
+
+# Stop a previous dev server started by this script (by process group, not pkill)
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    kill -TERM -- "-$(cat "$PID_FILE")" 2>/dev/null || true
+    sleep 1
+fi
 
 # Start development server
 echo "🌐 Starting Flask development server on port 8080..."
@@ -86,27 +90,40 @@ echo "   Access at: http://$(hostname -I | cut -d' ' -f1):8080"
 echo "   Press Ctrl+C to stop"
 echo ""
 
-# Start with auto-reload
-python app.py --port 8080 --debug &
+# Own process group so the reloader and its child stop together
+setsid python app.py --port 8080 --debug &
 DEV_PID=$!
+echo "$DEV_PID" > "$PID_FILE"
 
-# Create stop script
-cat > stop-dev.sh << EOF2
-#!/bin/bash
-echo "⏹️  Stopping development server..."
-kill $DEV_PID 2>/dev/null || true
-pkill -f "python.*app.py" 2>/dev/null || true
-pkill -f "gunicorn.*8080" 2>/dev/null || true
-echo "✅ Development server stopped"
-EOF2
-
-chmod +x stop-dev.sh
+cleanup() {
+    kill -TERM -- "-$DEV_PID" 2>/dev/null || true
+    rm -f "$PID_FILE"
+}
+trap cleanup INT TERM
 
 # Wait for process
 wait $DEV_PID
+rm -f "$PID_FILE"
 EOF
 
 chmod +x start-dev.sh
+
+# Create stop script
+cat > stop-dev.sh << 'EOF'
+#!/bin/bash
+echo "⏹️  Stopping development server..."
+PID_FILE=".dev-server.pid"
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    kill -TERM -- "-$(cat "$PID_FILE")"
+    rm -f "$PID_FILE"
+    echo "✅ Development server stopped"
+else
+    rm -f "$PID_FILE"
+    echo "ℹ️  No development server running"
+fi
+EOF
+
+chmod +x stop-dev.sh
 
 # Create feature branch creation script
 cat > new-feature.sh << 'EOF'

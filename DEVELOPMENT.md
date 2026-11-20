@@ -139,7 +139,7 @@ Production:  /opt/orei-control (port 80 via nginx)
 - Simple setup
 
 **Cons:**
-- One Orei device and one serial port. Dev and the service can both open `/dev/serial0`, and nothing stops them from interleaving commands. Stop the service before testing dev against the hardware:
+- One Orei device and one serial port. The port is opened exclusively, so whichever process opens it first keeps it, and the other reports "Serial port not connected". Stop the service before testing dev against the hardware:
   ```bash
   sudo systemctl stop orei-control.service
   ./start-dev.sh
@@ -290,11 +290,13 @@ curl -I http://localhost:5000
 
 **Development server won't start:**
 ```bash
-pkill -f "python.*app.py"
-pkill -f "gunicorn.*8080"
+./stop-dev.sh     # stops the server recorded in .dev-server.pid
 ./start-dev.sh
 ```
-`start-dev.sh` and `stop-dev.sh` run the same `pkill -f "python.*app.py"`. It matches any process whose command line contains both words, including an `ssh host '...'` command that mentions them. Run the scripts from an interactive shell, or stop the dev server by PID.
+`start-dev.sh` runs the server in its own process group and records it in `.dev-server.pid`. `stop-dev.sh` stops that group only. Checkouts created before this change have older scripts that use `pkill -f "python.*app.py"`. Regenerate them by deleting `start-dev.sh` and `stop-dev.sh` and copying the new heredocs from `dev-setup.sh`.
+
+**Serial port shows "not connected" in dev:**
+The port is opened exclusively. If `orei-control.service` holds it, the dev server cannot open it. Stop the service first.
 
 **Production deployment fails:**
 - Check backup directory exists

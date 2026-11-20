@@ -182,4 +182,5 @@ temp/
 
 # Local device configuration files
 roku_devices.json
-app_config.json 
+app_config.json
+.dev-server.pid
