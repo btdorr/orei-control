@@ -519,7 +519,7 @@ def index():
 def get_running_commit():
     """Commit checked out when this process started. The UI compares it to the update target."""
     try:
-        return subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True,
+        return subprocess.run(['/usr/bin/git', 'rev-parse', 'HEAD'], capture_output=True, text=True,
                               timeout=5, cwd=os.path.dirname(os.path.abspath(__file__))).stdout.strip() or 'unknown'
     except Exception:
         return 'unknown'
@@ -1001,7 +1001,7 @@ UPDATE_FINAL_STATES = {'up_to_date', 'success', 'failed', 'rolled_back', 'rollba
 
 def update_unit_active():
     """True while the orei-update transient unit is running"""
-    result = subprocess.run(['systemctl', 'is-active', '--quiet', f'{UPDATE_UNIT}.service'])
+    result = subprocess.run(['/usr/bin/systemctl', 'is-active', '--quiet', f'{UPDATE_UNIT}.service'])
     return result.returncode == 0
 
 
