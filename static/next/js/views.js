@@ -200,10 +200,14 @@ function renderRemote() {
         </div>`;
 }
 
+// Confirmation under the remote ("Sent Left to Matrix 1"). Clears after 3 seconds so it never goes stale.
+let lastTimer;
 function setLast(text) {
     lastSent = text;
     const el = $('last');
     if (el) el.textContent = text;
+    clearTimeout(lastTimer);
+    if (text) lastTimer = setTimeout(() => setLast(''), 3000);
 }
 
 function render() {
