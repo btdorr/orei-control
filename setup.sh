@@ -60,9 +60,10 @@ fi
 APP_DIR="/opt/orei-control"
 echo "📁 Setting up application directory at $APP_DIR..."
 
-# Create directory and copy files
+# Create directory and copy files. Never copy a source virtualenv: its scripts
+# hard-code the source path and break when that directory is removed.
 sudo mkdir -p "$APP_DIR"
-sudo cp -r . "$APP_DIR/"
+tar -C . --exclude=./venv --exclude=./venv-dev -cf - . | sudo tar -C "$APP_DIR" -xf -
 sudo chown -R $USER:$USER "$APP_DIR"
 
 cd "$APP_DIR"
@@ -93,7 +94,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
 Environment="PATH=$APP_DIR/venv/bin"
-ExecStart=$APP_DIR/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 --timeout 120 app:app
+ExecStart=$APP_DIR/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 1 --threads 4 --timeout 120 app:app
 Restart=always
 RestartSec=10
 
@@ -122,11 +123,11 @@ server {
         proxy_send_timeout 120s;
     }
     
-    # Static files optimization
+    # Static files: browsers revalidate on every load (cheap 304s) so an
+    # update never leaves the page running a mix of old and new JS modules
     location /static/ {
         proxy_pass http://127.0.0.1:5000;
-        expires 1h;
-        add_header Cache-Control "public, no-transform";
+        add_header Cache-Control "no-cache";
     }
 }
 EOF

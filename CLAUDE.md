@@ -27,7 +27,7 @@ python test-roku.py                    # Roku discovery and ECP check
 sudo journalctl -u orei-control.service -f
 ```
 
-Production runs `gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 app:app` behind nginx on port 80.
+Production runs `gunicorn --bind 127.0.0.1:5000 --workers 1 --threads 4 app:app` behind nginx on port 80. Port 5000 is not reachable from the network.
 
 ## Architecture
 
@@ -44,10 +44,18 @@ Production runs `gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 app:app` b
 - Each module exports a singleton object (`DeviceControl`, `DisplayManager`, `AudioControl`, `RokuControl`, ...). Shared state lives on `window.oreiApp` (`currentMode`, `windowInputs`, `selectedWindow`). Some modules also register on `window` (`window.CommandHistory`, `window.RokuControl`) for cross-module calls.
 - Cross-module updates use DOM `CustomEvent`s on `document`, e.g. `windowInputsChanged` from `display.js`, which drives which Roku remotes are shown.
 - All device traffic goes through `api.js`, which posts raw RS-232 strings to `/api/command`. Device protocol strings (`r multiview!`, `s multiview 5!`) are built in the frontend modules. `rs-232_commands.md` is the protocol reference.
-- Cache busting is manual query strings (`main.js?v=...`, `system.js?v=...`). Bump them when changing JS that browsers may cache.
+- No cache-busting query strings. nginx sends `Cache-Control: no-cache` for `/static/`, so browsers revalidate every file on load and never mix old and new modules after an update.
 - Theming is CSS variables in `styles.css`. Changes must work in both light and dark themes.
 - `index()` serves `static/index.html` with `__APP_TITLE__` and `__APP_SUBTITLE__` replaced from `branding.json` (HTML-escaped, defaults in `DEFAULT_BRANDING`). Opening the HTML file directly shows the raw tokens.
 - `roku.js` dispatches `rokuMappingsChanged` when mappings load or change. `display.js` rebuilds window input and audio source labels from `window.RokuControl.mappings`.
+
+## Security model
+
+- No login, by decision. Anyone who can reach port 80 (LAN, tailnet) has full control. Do not add authentication without asking.
+- No CORS. The UI is same-origin. Do not re-add `flask_cors`, which would let any website call the API from a visitor's browser.
+- Strings from devices or the API (Roku names, IPs, model, serial, error messages) must not reach `innerHTML` unescaped. Use `Utils.escapeHtml` or `textContent`. `Utils.showToast` escapes its message.
+- Roku inputs are validated server-side: mappings (`validate_roku_mappings`: HDMI 1-4, private IPv4, short strings), keypress names, and app IDs, because they are interpolated into ECP URLs. Serial port changes must be a port from `get_available_serial_ports()`.
+- The dev server runs with the reloader but never the Werkzeug debugger (`use_debugger=False`), because it binds `0.0.0.0`.
 
 ## Gotchas
 

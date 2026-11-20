@@ -274,12 +274,18 @@ nmap -p 8060 --open $(ip route | grep 'scope link' | awk '{print $1}' | head -1)
 - **Backend**: Flask, single file (`app.py`), serialized RS-232 communication
 - **Styling**: Bootstrap 5 (CDN) with custom CSS variables for theming
 - **Communication**: REST API. The UI refreshes device state on load and on the Refresh button, not by polling
-- **Production**: gunicorn (1 worker, 4 threads) on port 5000 behind nginx on port 80, run by `orei-control.service`. One process is required because the serial port is opened exclusively.
+- **Production**: gunicorn (1 worker, 4 threads) on `127.0.0.1:5000` behind nginx on port 80, run by `orei-control.service`. One process is required because the serial port is opened exclusively.
 
 ### Key Design Patterns
 - **Event-Driven**: Component communication via custom events
 - **Serialized**: All device communication goes through one lock in `SerialManager`, and the port is opened exclusively so a second process cannot send commands at the same time
 - **Responsive**: Layouts for phone, tablet, and desktop
+
+### Security
+- **No login, by design.** The panel is meant for a home network. Anyone who can reach port 80 on the Pi (LAN, or the tailnet for remote installs) can control the multiviewer, Roku devices, shutdown, restart, and updates. Keep it off the public internet.
+- The API only accepts same-origin requests from the UI (no CORS).
+- Roku mappings must use private IPv4 addresses. Roku key names and app IDs are validated. The serial port can only be set to a port the app lists.
+- Device-supplied text (Roku names, models, serials) is escaped before display.
 
 ### Updates
 The System Update menu and `deploy-production.sh` both run `update-app.sh`. It:

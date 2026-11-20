@@ -6,7 +6,9 @@ Flask-based web application for RS-232 control
 
 import argparse
 import html
+import ipaddress
 import json
+import re
 import os
 import time
 import threading
@@ -14,10 +16,8 @@ import logging
 import subprocess
 import requests
 import xml.etree.ElementTree as ET
-import signal
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template, send_from_directory, Response
-from flask_cors import CORS
+from datetime import datetime, timezone
+from flask import Flask, request, jsonify
 import serial
 import serial.tools.list_ports
 
@@ -29,7 +29,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
 
 # Configuration
 APP_CONFIG_FILE = os.environ.get('OREI_CONFIG', 'app_config.json')
@@ -73,7 +72,6 @@ class Config:
 config = Config()
 
 # Global variables
-serial_port = None
 serial_lock = threading.Lock()
 command_history = []
 
@@ -224,7 +222,6 @@ def scan_roku_devices_fallback():
                     logger.info(f"Scanning network range: {network_base}.1-254")
                     
                     # Use threading for faster scanning
-                    import threading
                     from concurrent.futures import ThreadPoolExecutor, as_completed
                     
                     def check_ip(ip):
@@ -347,7 +344,6 @@ def get_available_serial_ports():
         if os.path.exists(port):
             try:
                 # Try to get port info
-                import serial.tools.list_ports
                 port_info = next((p for p in serial.tools.list_ports.comports() if p.device == port), None)
                 if port_info:
                     ports.append({
@@ -362,7 +358,7 @@ def get_available_serial_ports():
                         'description': f'Serial Port ({os.path.basename(port)})',
                         'manufacturer': 'Unknown'
                     })
-            except:
+            except Exception:
                 # Fallback if serial.tools.list_ports fails
                 ports.append({
                     'device': port,
@@ -372,9 +368,46 @@ def get_available_serial_ports():
     
     return ports
 
+# Roku ECP inputs are interpolated into URLs, so restrict them
+ROKU_KEY_PATTERN = re.compile(r'^[A-Za-z0-9_]{1,32}$')
+ROKU_APP_ID_PATTERN = re.compile(r'^[A-Za-z0-9_.]{1,64}$')
+ROKU_TEXT_FIELDS = ('name', 'model', 'serial')
+
+
+def valid_roku_ip(ip):
+    """Only private-network IPv4 addresses, so the server cannot be pointed at arbitrary hosts"""
+    try:
+        addr = ipaddress.ip_address(str(ip))
+    except ValueError:
+        return False
+    return addr.version == 4 and addr.is_private
+
+
+def validate_roku_mappings(mappings):
+    """Return (clean_mappings, error). Keys must be HDMI 1-4, IPs private IPv4, text fields short strings."""
+    if not isinstance(mappings, dict):
+        return None, 'mappings must be an object'
+    clean = {}
+    for hdmi, device in mappings.items():
+        if str(hdmi) not in ('1', '2', '3', '4'):
+            return None, f'Invalid HDMI input: {hdmi}'
+        if not isinstance(device, dict) or not valid_roku_ip(device.get('ip')):
+            return None, f'Invalid IP for HDMI {hdmi}'
+        entry = {'ip': str(device['ip'])}
+        for field in ROKU_TEXT_FIELDS:
+            value = device.get(field, 'Unknown')
+            if not isinstance(value, str) or len(value) > 100:
+                return None, f'Invalid {field} for HDMI {hdmi}'
+            entry[field] = value
+        clean[str(hdmi)] = entry
+    return clean, None
+
+
 # Send ECP command to Roku device
 def send_roku_command(ip, command):
     """Send ECP command to Roku device"""
+    if not valid_roku_ip(ip) or not ROKU_KEY_PATTERN.match(str(command)):
+        return False
     try:
         url = f"http://{ip}:8060/keypress/{command}"
         response = requests.post(url, timeout=5)
@@ -385,6 +418,8 @@ def send_roku_command(ip, command):
 # Launch Roku app
 def launch_roku_app(ip, app_id):
     """Launch specific app on Roku device"""
+    if not valid_roku_ip(ip) or not ROKU_APP_ID_PATTERN.match(str(app_id)):
+        return False
     try:
         url = f"http://{ip}:8060/launch/{app_id}"
         response = requests.post(url, timeout=5)
@@ -395,6 +430,8 @@ def launch_roku_app(ip, app_id):
 # Get Roku apps
 def get_roku_apps(ip):
     """Get list of installed apps on Roku device"""
+    if not valid_roku_ip(ip):
+        return []
     try:
         response = requests.get(f"http://{ip}:8060/query/apps", timeout=5)
         if response.status_code == 200:
@@ -483,7 +520,7 @@ class SerialManager:
                                 if any(keyword in line.lower() for keyword in 
                                        ['on', 'off', 'hdmi', 'mode', 'screen', 'finished', 'ok']):
                                     break
-                        except:
+                        except Exception:
                             break
                     else:
                         time.sleep(0.01)
@@ -569,7 +606,7 @@ def get_version():
             version_data = {
                 "version": "1.0.0",
                 "build": "1",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "commit": "unknown"
             }
         
@@ -702,11 +739,12 @@ def set_serial_config():
                 'error': 'Serial port is required'
             }), 400
         
-        # Check if port exists
-        if not os.path.exists(new_port):
+        # Only ports the app itself lists, so arbitrary files cannot be opened and written
+        known_ports = {p['device'] for p in get_available_serial_ports()}
+        if new_port not in known_ports:
             return jsonify({
                 'success': False,
-                'error': f'Serial port {new_port} does not exist'
+                'error': f'{new_port} is not an available serial port'
             }), 400
         
         # Update configuration
@@ -771,8 +809,10 @@ def set_roku_mappings():
     """Set Roku device mappings"""
     try:
         data = request.get_json()
-        mappings = data.get('mappings', {})
-        
+        mappings, error = validate_roku_mappings(data.get('mappings', {}))
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
         if save_roku_mappings(mappings):
             return jsonify({
                 'success': True,
@@ -820,6 +860,9 @@ def roku_command():
                 'error': 'Invalid device mapping'
             }), 400
         
+        if not ROKU_KEY_PATTERN.match(str(command)):
+            return jsonify({'success': False, 'error': 'Invalid Roku command'}), 400
+
         # Send command
         success = send_roku_command(ip, command)
         
@@ -890,6 +933,9 @@ def roku_launch_app():
                 'error': f'No Roku device mapped to HDMI {hdmi_input}'
             }), 404
         
+        if not ROKU_APP_ID_PATTERN.match(str(app_id)):
+            return jsonify({'success': False, 'error': 'Invalid app_id'}), 400
+
         ip = device_info.get('ip')
         success = launch_roku_app(ip, app_id)
         
@@ -1130,7 +1176,8 @@ def main():
     app.run(
         host='0.0.0.0',  # Allow external connections
         port=args.port,
-        debug=args.debug
+        debug=args.debug,
+        use_debugger=False  # the interactive debugger allows code execution from the network
     )
 
 if __name__ == '__main__':
