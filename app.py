@@ -127,6 +127,13 @@ def validate_ui_state(data):
         clean['volume'] = data['volume']
     if isinstance(data.get('muted'), bool):
         clean['muted'] = data['muted']
+    # Layout variant (PBP/triple/quad mode) and PIP placement, used by the /next UI
+    if _int_in(data.get('submode'), 1, 3):
+        clean['submode'] = data['submode']
+    if _int_in(data.get('pipPosition'), 1, 4):
+        clean['pipPosition'] = data['pipPosition']
+    if _int_in(data.get('pipSize'), 1, 3):
+        clean['pipSize'] = data['pipSize']
     return clean
 
 
@@ -619,9 +626,9 @@ class SerialManager:
 serial_manager = SerialManager()
 
 # Routes
-@app.route('/')
-def index():
-    with open('static/index.html', 'r') as f:
+def render_page(path):
+    """Serve an HTML page with branding and the last known device state filled in"""
+    with open(path, 'r') as f:
         page = f.read()
     branding = load_branding()
     page = page.replace('__APP_TITLE__', html.escape(branding['title']))
@@ -630,6 +637,23 @@ def index():
     # '<' is escaped so the JSON cannot close the surrounding <script> tag.
     page = page.replace('__APP_STATE__', json.dumps(load_ui_state()).replace('<', '\\u003c'))
     return page
+
+
+@app.route('/')
+def index():
+    return render_page('static/index.html')
+
+
+@app.route('/classic')
+def classic():
+    """The original Bootstrap UI, kept available after the default changes"""
+    return render_page('static/index.html')
+
+
+@app.route('/next')
+def next_ui():
+    """The TV-first UI (static/next), served here until it becomes the default"""
+    return render_page('static/next/index.html')
 
 def get_running_commit():
     """Commit checked out when this process started. The UI compares it to the update target."""

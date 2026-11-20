@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <title>__APP_TITLE__</title>
+    <script>
+        // Apply the saved theme before first paint (shared with the classic view)
+        try {
+            const t = localStorage.getItem('orei-theme-preference');
+            if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+        } catch (e) { /* storage blocked: follow the system theme */ }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap">
+    <link rel="stylesheet" href="static/next/next.css">
+</head>
+<body>
+    <div class="app">
+        <header class="top">
+            <div class="grow">
+                <h1>__APP_TITLE__</h1>
+                <div class="sub">__APP_SUBTITLE__</div>
+            </div>
+            <span class="chip-status" id="status" data-state="unknown" role="status"><i></i><span id="statusText">Checking</span></span>
+            <button class="icon-btn" id="refreshBtn" aria-label="Read settings from the matrix" title="Read settings from the matrix"></button>
+            <button class="icon-btn" id="openSettings" aria-label="Settings" title="Settings"></button>
+        </header>
+
+        <div class="banner" id="banner" hidden>
+            <div class="grow">
+                <b id="bannerTitle"></b>
+                <span id="bannerText"></span>
+            </div>
+            <button class="btn primary" id="bannerAction"></button>
+        </div>
+
+        <main class="main" id="main">
+            <div class="a-tv">
+                <div class="tv"><div class="screen" id="screen"></div></div>
+            </div>
+
+            <section class="panel a-sound" aria-labelledby="h-snd">
+                <h2 id="h-snd">Sound <span id="soundFrom"></span></h2>
+                <div class="sound">
+                    <button class="icon-btn" id="mute" aria-pressed="false" aria-label="Mute"></button>
+                    <input type="range" id="vol" min="0" max="100" value="50" aria-label="Volume">
+                    <output id="volOut" for="vol">50</output>
+                </div>
+                <div class="chips" role="group" aria-label="Play sound from" id="soundSrc"></div>
+            </section>
+
+            <section class="panel a-remote remote" id="remote" aria-label="Roku remote"></section>
+
+            <section class="panel a-layouts" aria-labelledby="h-lay">
+                <div class="panel-head">
+                    <h2 id="h-lay">Layout</h2>
+                    <div class="inset-opts" id="insetOpts" hidden>
+                    <span class="opt-lbl">Inset corner</span>
+                    <div class="seg" role="group" aria-label="Inset corner" id="insetCorner"></div>
+                    <span class="opt-lbl">Size</span>
+                    <div class="seg" role="group" aria-label="Inset size" id="insetSize"></div>
+                    </div>
+                </div>
+                <div class="layouts" id="layouts"></div>
+            </section>
+
+            <section class="panel a-sources" aria-labelledby="h-src">
+                <h2 id="h-src">Input for window 1</h2>
+                <div class="sources" id="sources"></div>
+            </section>
+        </main>
+    </div>
+
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="sheet" id="sheet" hidden aria-labelledby="h-set" role="dialog" aria-modal="true">
+        <header>
+            <h2 id="h-set" tabindex="-1">Settings</h2>
+            <button class="icon-btn" id="closeSettings" aria-label="Close settings"></button>
+        </header>
+        <div id="sheetBody"></div>
+    </aside>
+
+    <div class="notice" id="notice" role="status" aria-live="polite" hidden></div>
+
+    <!-- Last known device state, filled in by the server -->
+    <script>window.oreiInitialState = __APP_STATE__;</script>
+    <script type="module" src="static/next/js/main.js"></script>
+</body>
+</html>
