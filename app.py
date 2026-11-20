@@ -1039,6 +1039,9 @@ def system_update():
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         if result.returncode != 0:
+            if update_unit_active():
+                # Lost a race with another request that started the unit first
+                return jsonify({'success': False, 'error': 'Update already in progress'}), 409
             error = (result.stderr or result.stdout).strip()
             logger.error(f"Failed to start update unit: {error}")
             return jsonify({'success': False, 'error': f'Failed to start update: {error}'}), 500
