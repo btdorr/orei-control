@@ -33,9 +33,6 @@ CORS(app)
 # Configuration
 APP_CONFIG_FILE = os.environ.get('OREI_CONFIG', 'app_config.json')
 
-# Global variable to track update process
-update_process = None
-
 class Config:
     def __init__(self):
         self.SERIAL_PORT = '/dev/serial0'  # Default Raspberry Pi serial port
@@ -519,6 +516,18 @@ def index():
     with open('static/index.html', 'r') as f:
         return f.read()
 
+def get_running_commit():
+    """Commit checked out when this process started. The UI compares it to the update target."""
+    try:
+        return subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True,
+                              timeout=5, cwd=os.path.dirname(os.path.abspath(__file__))).stdout.strip() or 'unknown'
+    except Exception:
+        return 'unknown'
+
+
+RUNNING_COMMIT = get_running_commit()
+
+
 @app.route('/api/version', methods=['GET'])
 def get_version():
     """Get application version information"""
@@ -538,7 +547,8 @@ def get_version():
         
         return jsonify({
             "success": True,
-            "version": version_data
+            "version": version_data,
+            "running_commit": RUNNING_COMMIT
         })
     except Exception as e:
         logger.error(f"Error getting version: {e}")
@@ -983,124 +993,77 @@ def cancel_restart():
             'error': f'Failed to cancel restart: {str(e)}'
         }), 500
 
+UPDATE_UNIT = 'orei-update'
+UPDATE_STATUS_FILE = 'update-status.json'
+UPDATE_LOG_FILE = 'update.log'
+UPDATE_FINAL_STATES = {'up_to_date', 'success', 'failed', 'rolled_back', 'rollback_failed'}
+
+
+def update_unit_active():
+    """True while the orei-update transient unit is running"""
+    result = subprocess.run(['systemctl', 'is-active', '--quiet', f'{UPDATE_UNIT}.service'])
+    return result.returncode == 0
+
+
+def read_update_status():
+    if os.path.exists(UPDATE_STATUS_FILE):
+        try:
+            with open(UPDATE_STATUS_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return None
+
+
 @app.route('/api/system/update', methods=['POST'])
 def system_update():
-    """Update the Orei Control Panel system"""
-    global update_process
-    
+    """Start update-app.sh as a transient systemd unit so it survives the service restart"""
     try:
-        # Check if update is already in progress
-        if update_process and update_process.poll() is None:
-            return jsonify({
-                'success': False,
-                'error': 'Update already in progress'
-            }), 409
-        
-        # Log the update request
-        logger.info("System update requested via web interface")
-        
-        # Validate update script exists and is executable
+        if update_unit_active():
+            return jsonify({'success': False, 'error': 'Update already in progress'}), 409
+
         script_path = os.path.abspath('./update-app.sh')
-        if not os.path.exists(script_path):
-            return jsonify({
-                'success': False,
-                'error': 'Update script not found'
-            }), 404
-            
         if not os.access(script_path, os.X_OK):
-            return jsonify({
-                'success': False,
-                'error': 'Update script is not executable'
-            }), 403
-        
-        def generate_update_output():
-            """Generator function to stream update output"""
-            global update_process
-            try:
-                # Run the update script and stream output
-                update_process = subprocess.Popen(
-                    ['/bin/bash', script_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    universal_newlines=True,
-                    bufsize=1,
-                    cwd=os.path.dirname(script_path)
-                )
-                
-                # Stream output line by line
-                for line in iter(update_process.stdout.readline, ''):
-                    if line:
-                        yield line
-                
-                # Wait for process to complete
-                update_process.stdout.close()
-                return_code = update_process.wait()
-                
-                if return_code != 0:
-                    yield f"\n❌ Update failed with exit code {return_code}\n"
-                else:
-                    yield f"\n✅ Update completed successfully!\n"
-                    
-            except Exception as e:
-                yield f"\n❌ Update failed: {str(e)}\n"
-        
-        # Return streaming response
-        return Response(
-            generate_update_output(),
-            mimetype='text/plain',
-            headers={
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
-        )
-        
+            return jsonify({'success': False, 'error': 'Update script not found or not executable'}), 404
+
+        logger.info("System update requested via web interface")
+        cmd = [
+            '/usr/bin/sudo', '-n', 'systemd-run',
+            f'--unit={UPDATE_UNIT}', '--collect',
+            f'--uid={os.getuid()}', f'--gid={os.getgid()}',
+            f'--working-directory={os.path.dirname(script_path)}',
+        ]
+        if os.environ.get('UPDATE_BRANCH'):
+            cmd.append(f"--setenv=UPDATE_BRANCH={os.environ['UPDATE_BRANCH']}")
+        cmd += ['/bin/bash', script_path]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        if result.returncode != 0:
+            error = (result.stderr or result.stdout).strip()
+            logger.error(f"Failed to start update unit: {error}")
+            return jsonify({'success': False, 'error': f'Failed to start update: {error}'}), 500
+
+        return jsonify({'success': True, 'message': 'Update started'}), 202
+
     except Exception as e:
         logger.error(f"Failed to start system update: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to start update: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': f'Failed to start update: {str(e)}'}), 500
 
-@app.route('/api/system/update/cancel', methods=['POST'])
-def cancel_update():
-    """Cancel the ongoing system update"""
-    global update_process
-    
-    try:
-        if not update_process or update_process.poll() is not None:
-            return jsonify({
-                'success': False,
-                'error': 'No update process is currently running'
-            }), 400
-        
-        # Log the cancel request
-        logger.info("System update cancel requested via web interface")
-        
-        # Try to terminate the process gracefully first
-        update_process.terminate()
-        
-        # Wait for a short time for graceful termination
-        try:
-            update_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            # Force kill if graceful termination fails
-            update_process.kill()
-            update_process.wait()
-        
-        # Reset the global process variable
-        update_process = None
-        
-        return jsonify({
-            'success': True,
-            'message': 'Update process cancelled successfully'
-        })
-        
-    except Exception as e:
-        logger.error(f"Failed to cancel system update: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to cancel update: {str(e)}'
-        }), 500
+
+@app.route('/api/system/update/status', methods=['GET'])
+def system_update_status():
+    """Report the last update's state and log. Safe to poll while the service restarts."""
+    status = read_update_status() or {'state': 'none', 'message': 'No update has run'}
+    active = update_unit_active()
+    # A 'running' state with no active unit means the script was killed (e.g. power loss)
+    if status.get('state') not in UPDATE_FINAL_STATES and status.get('state') != 'none' and not active:
+        status = dict(status, state='failed', message='Update stopped unexpectedly. Check update.log')
+    log = ''
+    if os.path.exists(UPDATE_LOG_FILE):
+        with open(UPDATE_LOG_FILE, 'r', errors='replace') as f:
+            log = f.read()[-65536:]
+    return jsonify({'success': True, 'active': active, 'status': status, 'log': log})
+
 
 # Error handlers
 @app.errorhandler(404)

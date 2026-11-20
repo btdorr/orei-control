@@ -21,7 +21,7 @@ python test-roku.py                    # Roku discovery and ECP check
 
 # Production (on the Pi)
 ./setup.sh                 # installs nginx, systemd unit, venv in place
-./deploy-production.sh     # backup, pull, restart, rollback on failure
+./deploy-production.sh     # full backup, then update-app.sh
 ./restart-service.sh
 ./check-status.sh
 sudo journalctl -u orei-control.service -f
@@ -35,7 +35,8 @@ Production runs `gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 app:app` b
 - `Config` loads `serial_port` and `baud_rate` from `app_config.json`. Roku window mappings persist in `roku_devices.json`. Both paths are relative to the working directory and are gitignored runtime state.
 - `SerialManager` owns the serial connection. Every command is forced to end with `!`, sent under a global `serial_lock`, then read until a keyword (`on`, `off`, `hdmi`, `mode`, `ok`, ...) or a 2s timeout. `COMMAND_DELAY` (0.2s) is the pause before reading. Command history is an in-memory list capped at 50.
 - Roku discovery tries SSDP first, then falls back to scanning the subnet with `nc` on port 8060 (`scan_roku_devices_fallback`). Roku control is HTTP ECP via `requests`.
-- `/api/system/*` routes call `sudo shutdown` and run `update-app.sh` as a subprocess. These assume the Pi's sudoers setup from `setup.sh`.
+- `/api/system/*` routes call `sudo shutdown`. `POST /api/system/update` starts `update-app.sh` with `sudo systemd-run --unit=orei-update` so it survives the service restart. The UI polls `/api/system/update/status`, then waits for `/api/version` `running_commit` to match the target. All of this needs passwordless sudo for the service user.
+- `update-app.sh` runs everything inside `main()` so bash finishes parsing before git rewrites the file. Keep that structure. It must never modify tracked files, or the next update refuses to run.
 - The serial port is opened with `exclusive=True`. Lock, history, and the serial handle are per process, so the service must stay at 1 gunicorn worker. Use threads for concurrency. A second worker would fail to open the port.
 
 ### Frontend (`static/`)
