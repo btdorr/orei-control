@@ -19,6 +19,7 @@ let history = [];
 let version = null;
 let confirm = null;         // which risky action is waiting for a second tap
 let system = null;
+let brand = null;       // { title, subtitle } being edited, null until the panel opens
 let logOpen = false;    // command log expanded (kept across re-renders)          // { kind: 'restart'|'shutdown'|'update', ... } while one is running
 
 function theme() {
@@ -100,6 +101,25 @@ function logSection() {
         <div class="btn-row"><button class="btn" data-clear-log>Clear log</button></div></details></section>`;
 }
 
+function brandSection() {
+    if (!brand) return '';
+    return `<section><h3>Name</h3>
+        <form class="brand" id="brandForm">
+            <label for="setTitle">Title</label>
+            <input id="setTitle" maxlength="80" autocomplete="off" value="${esc(brand.title)}">
+            <label for="setSubtitle">Subtitle</label>
+            <input id="setSubtitle" maxlength="120" autocomplete="off" value="${esc(brand.subtitle)}">
+            <p class="hint">Leave a field empty to use the default.</p>
+            <div class="btn-row"><button class="btn primary">Save name</button></div>
+        </form></section>`;
+}
+
+function showBrand(b) {
+    document.querySelector('header.top h1').textContent = b.title;
+    document.querySelector('header.top .sub').textContent = b.subtitle;
+    document.title = b.title;
+}
+
 function controllerSection() {
     const v = version ? `${version.version}` : '…';
     let actions;
@@ -136,7 +156,7 @@ function render() {
     const scroll = $('sheet').scrollTop;
     const typed = $('cmdInput')?.value || '';
     const focusId = document.activeElement?.id;
-    body.innerHTML = rokuSection() + outputSection() + matrixSection() + logSection() + controllerSection();
+    body.innerHTML = rokuSection() + outputSection() + matrixSection() + logSection() + brandSection() + controllerSection();
     $('sheet').scrollTop = scroll;
     if ($('cmdInput')) $('cmdInput').value = typed;
     if (focusId && $(focusId)) $(focusId).focus();
@@ -314,8 +334,25 @@ export const Settings = {
             loadHistory();
         });
 
+        $('sheet').addEventListener('input', e => {
+            if (e.target.id === 'setTitle') brand.title = e.target.value;
+            else if (e.target.id === 'setSubtitle') brand.subtitle = e.target.value;
+        });
+
         $('sheet').addEventListener('submit', async e => {
             e.preventDefault();
+            if (e.target.id === 'brandForm') {
+                const data = await api.post('/api/branding', brand).catch(err => ({ error: err.message }));
+                if (data.success) {
+                    brand = { ...data.branding };
+                    showBrand(data.branding);
+                    notify('Name saved', 'info');
+                    render();
+                } else {
+                    notify(`Name not saved: ${data.error}`);
+                }
+                return;
+            }
             const input = $('cmdInput');
             const cmd = input.value.trim();
             if (!cmd) return;
@@ -328,6 +365,10 @@ export const Settings = {
     open(section) {
         open = true;
         confirm = null;
+        brand = {
+            title: document.querySelector('header.top h1').textContent,
+            subtitle: document.querySelector('header.top .sub').textContent,
+        };
         $('sheet').hidden = false;
         $('scrim').hidden = false;
         document.body.style.overflow = 'hidden';

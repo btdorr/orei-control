@@ -100,6 +100,16 @@ def load_branding():
     return branding
 
 
+BRANDING_MAX_LENGTH = {'title': 80, 'subtitle': 120}
+
+
+def save_branding(branding):
+    tmp = BRANDING_FILE + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(branding, f, indent=2)
+    os.replace(tmp, BRANDING_FILE)
+
+
 # Last known Remote Control tab state (mode, window inputs, audio), saved by the
 # UI after each refresh or change and embedded in the page for the first paint.
 UI_STATE_FILE = 'ui_state.json'
@@ -1048,6 +1058,28 @@ def set_ui_state():
         return jsonify({'success': True, 'state': state})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/branding', methods=['POST'])
+def set_branding():
+    """Save the page title and subtitle. An empty value restores the default."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Expected a JSON object'}), 400
+    branding = {}
+    for key, limit in BRANDING_MAX_LENGTH.items():
+        value = data.get(key, '')
+        if not isinstance(value, str):
+            return jsonify({'success': False, 'error': f'{key} must be text'}), 400
+        value = ' '.join(value.split())
+        if len(value) > limit:
+            return jsonify({'success': False, 'error': f'{key} must be {limit} characters or fewer'}), 400
+        branding[key] = value or DEFAULT_BRANDING[key]
+    try:
+        save_branding(branding)
+    except IOError as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': True, 'branding': branding})
 
 
 # System Management API endpoint

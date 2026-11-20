@@ -293,6 +293,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .cmd input {
     flex: 1; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); padding: 8px 12px;
 }
+.brand { display: grid; gap: 6px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; }
+.brand input { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px 12px; min-width: 0; }
+.brand label:not(:first-child) { margin-top: 6px; }
 .updlog {
     font-size: 12px; background: var(--screen); color: #d6dde4; border-radius: 10px; padding: 10px 12px; max-height: 220px; overflow: auto;
     white-space: pre-wrap; overflow-wrap: anywhere; margin: 0;
