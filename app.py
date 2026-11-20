@@ -127,6 +127,17 @@ def validate_ui_state(data):
         clean['volume'] = data['volume']
     if isinstance(data.get('muted'), bool):
         clean['muted'] = data['muted']
+    # The matrix keeps window inputs per mode. Mode -> {window: input}, used by the /next UI
+    by_mode = data.get('inputsByMode')
+    if isinstance(by_mode, dict):
+        valid_modes = {}
+        for mode, inputs in by_mode.items():
+            if str(mode) in ('1', '2', '3', '4', '5') and isinstance(inputs, dict):
+                valid = {str(k): v for k, v in inputs.items() if str(k) in ('1', '2', '3', '4') and _int_in(v, 1, 4)}
+                if valid:
+                    valid_modes[str(mode)] = valid
+        if valid_modes:
+            clean['inputsByMode'] = valid_modes
     # Layout variant (PBP/triple/quad mode) and PIP placement, used by the /next UI
     if _int_in(data.get('submode'), 1, 3):
         clean['submode'] = data['submode']
@@ -1035,6 +1046,8 @@ def set_ui_state():
         state.update(update)
         if 'windowInputs' in update:
             state['windowInputs'] = {**load_ui_state().get('windowInputs', {}), **update['windowInputs']}
+        if 'inputsByMode' in update:
+            state['inputsByMode'] = {**load_ui_state().get('inputsByMode', {}), **update['inputsByMode']}
         save_ui_state(state)
         return jsonify({'success': True, 'state': state})
     except Exception as e:

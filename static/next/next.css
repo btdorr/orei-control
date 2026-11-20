@@ -361,3 +361,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 /* Grid items default to min-width: auto, which let the header grow to the title width on phones */
 .app > * { min-width: 0; }
+
+/* Window whose input has not been read yet after a layout switch */
+.win.pending { background: color-mix(in srgb, var(--muted) 18%, var(--screen)); }
+.win.pending .nm { font-weight: 500; opacity: 0.7; }

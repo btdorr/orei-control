@@ -30,6 +30,10 @@ export const state = {
     pipSize: saved.pipSize || 1,
     aspect: null,           // PBP/triple/quad window shape: 1 = fill screen, 2 = keep 16:9 (null = not read yet)
     windowInputs: { 1: 1, 2: 2, 3: 3, 4: 4, ...(saved.windowInputs || {}) },
+    // The matrix keeps window inputs separately for each mode (PIP window 2 and PBP window 2 can differ).
+    // Mode -> {window: input}, so a layout switch draws the right inputs before the read confirms them.
+    inputsByMode: saved.inputsByMode || (saved.mode && saved.windowInputs ? { [saved.mode]: saved.windowInputs } : {}),
+    inputsKnown: true,      // false while switching to a mode whose inputs have not been read yet
     audioSource: saved.audioSource ?? 0,   // 0 = follow window 1, 1-4 = HDMI input
     volume: saved.volume ?? 50,
     muted: saved.muted ?? false,
@@ -99,6 +103,7 @@ export function saveUiState() {
                 pipPosition: state.pipPosition,
                 pipSize: state.pipSize,
                 windowInputs: inputs,
+                inputsByMode: state.inputsByMode,
                 audioSource: state.audioSource,
                 volume: state.volume,
                 muted: state.muted,

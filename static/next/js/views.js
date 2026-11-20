@@ -55,6 +55,12 @@ function renderScreen() {
         const small = w < 30 || h < 40;
         const inset = layout.id === 'pip' && win === 2;
         const soundHere = hdmi === sound && !state.muted;
+        if (!state.inputsKnown) {
+            return `<button class="win pending${small ? ' small' : ''}${inset ? ' inset' : ''}" data-win="${win}"
+                style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;--c:var(--muted)"
+                aria-pressed="${state.selected === win}" aria-label="Window ${win}, reading input">
+                <span class="wn">${win}</span><span class="lbl"><span class="nm">Reading…</span></span></button>`;
+        }
         return `<button class="win${small ? ' small' : ''}${inset ? ' inset' : ''}" data-win="${win}"
             style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;--c:var(--in${hdmi})"
             aria-pressed="${state.selected === win}" aria-label="Window ${win}, ${esc(inputName(hdmi))}${soundHere ? ', sound' : ''}">

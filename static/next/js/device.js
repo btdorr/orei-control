@@ -56,7 +56,7 @@ export const Device = {
         const on = await this.readPower();
         if (!on) return;
         const mode = parseMode(await api.command('r multiview!'));
-        if (mode && mode !== state.mode) update({ mode });
+        if (mode && mode !== state.mode) update({ mode, ...this.cachedInputs(mode) });
         await this.readInputs();
         await this.readVariant();
         await this.readAudio();
@@ -70,7 +70,23 @@ export const Device = {
             const match = (await api.command(`r window ${win} in!`))?.match(/HDMI (\d)/);
             if (match) inputs[win] = Number(match[1]);
         }
-        update({ windowInputs: inputs });
+        update({
+            windowInputs: inputs,
+            inputsKnown: true,
+            inputsByMode: { ...state.inputsByMode, [state.mode]: this.visibleInputs(inputs) },
+        });
+    },
+
+    visibleInputs(inputs) {
+        const out = {};
+        for (let win = 1; win <= windowCount(); win++) out[win] = inputs[win];
+        return out;
+    },
+
+    // Inputs last seen for a mode, or a flag that they are unknown until read
+    cachedInputs(mode) {
+        const known = state.inputsByMode[mode];
+        return known ? { windowInputs: { ...state.windowInputs, ...known }, inputsKnown: true } : { inputsKnown: false };
     },
 
     async readVariant() {
@@ -112,7 +128,13 @@ export const Device = {
 
     async setLayout(layout) {
         const before = { mode: state.mode, submode: state.submode };
-        update({ mode: layout.mode, submode: layout.submode ?? state.submode, aspect: layout.mode === state.mode ? state.aspect : null });
+        const sameMode = layout.mode === state.mode;
+        update({
+            mode: layout.mode,
+            submode: layout.submode ?? state.submode,
+            aspect: sameMode ? state.aspect : null,
+            ...(sameMode ? {} : this.cachedInputs(layout.mode)),
+        });
         if (await api.command(`s multiview ${layout.mode}!`) === null) {
             update(before);
             return;
@@ -135,8 +157,12 @@ export const Device = {
     async setInput(win, hdmi) {
         const before = { ...state.windowInputs };
         update({ windowInputs: { ...state.windowInputs, [win]: hdmi } });
-        if (await api.command(`s window ${win} in ${hdmi}!`) === null) update({ windowInputs: before });
-        else saveUiState();
+        if (await api.command(`s window ${win} in ${hdmi}!`) === null) {
+            update({ windowInputs: before });
+        } else {
+            update({ inputsByMode: { ...state.inputsByMode, [state.mode]: this.visibleInputs(state.windowInputs) } });
+            saveUiState();
+        }
     },
 
     async setAudioSource(source) {
