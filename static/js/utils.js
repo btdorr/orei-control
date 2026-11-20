@@ -1,6 +1,16 @@
 // utils.js - Utility functions for Orei Control Panel
 
 export const Utils = {
+    // Escape text for use inside HTML, including attribute values
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
     // Show loading spinner
     showLoading() {
         const spinner = document.querySelector('.loading-spinner');
@@ -30,7 +40,7 @@ export const Utils = {
         
         toast.innerHTML = `
             <div class="d-flex">
-                <div class="toast-body">${message}</div>
+                <div class="toast-body">${this.escapeHtml(message)}</div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
             </div>
         `;

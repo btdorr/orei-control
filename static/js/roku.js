@@ -126,15 +126,15 @@ export const RokuControl = {
             deviceCard.className = 'card mb-2';
             deviceCard.innerHTML = `
                 <div class="card-body">
-                    <h6 class="card-title">${device.name}</h6>
+                    <h6 class="card-title">${Utils.escapeHtml(device.name)}</h6>
                     <p class="card-text">
                         <small class="text-muted">
-                            IP: ${device.ip}<br>
-                            Model: ${device.model}<br>
-                            Serial: ${device.serial}
+                            IP: ${Utils.escapeHtml(device.ip)}<br>
+                            Model: ${Utils.escapeHtml(device.model)}<br>
+                            Serial: ${Utils.escapeHtml(device.serial)}
                         </small>
                     </p>
-                    <select class="form-select form-select-sm" data-device-ip="${device.ip}">
+                    <select class="form-select form-select-sm" data-device-ip="${Utils.escapeHtml(device.ip)}">
                         <option value="">Select HDMI Input</option>
                         <option value="1">HDMI 1</option>
                         <option value="2">HDMI 2</option>
@@ -219,8 +219,8 @@ export const RokuControl = {
             const mappingItem = document.createElement('div');
             mappingItem.className = 'mb-2';
             mappingItem.innerHTML = `
-                <strong>HDMI ${hdmi}:</strong> ${device.name} (${device.ip})
-                <button class="btn btn-sm btn-outline-danger ms-2" onclick="RokuControl.removeMapping('${hdmi}')">
+                <strong>HDMI ${Utils.escapeHtml(hdmi)}:</strong> ${Utils.escapeHtml(device.name)} (${Utils.escapeHtml(device.ip)})
+                <button class="btn btn-sm btn-outline-danger ms-2" onclick="RokuControl.removeMapping('${Utils.escapeHtml(hdmi)}')">
                     Remove
                 </button>
             `;
@@ -354,7 +354,7 @@ export const RokuControl = {
         container.innerHTML = `
             <div class="card roku-remote">
                 <div class="card-header text-center">
-                    <h6 class="mb-0">${device.name} (HDMI ${hdmi})</h6>
+                    <h6 class="mb-0">${Utils.escapeHtml(device.name)} (HDMI ${Utils.escapeHtml(hdmi)})</h6>
                 </div>
                 <div class="card-body">
                     <!-- Power and Home -->

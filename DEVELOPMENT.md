@@ -21,7 +21,7 @@ Development Environment:
 └── Hardware: serial port from app_config_dev.json
 ```
 
-`start-dev.sh` runs `python app.py --port 8080 --debug` with `OREI_CONFIG=app_config_dev.json`. Gunicorn ignores these. Production always uses `app_config.json` on port 5000.
+`start-dev.sh` runs `python app.py --port 8080 --debug` with `OREI_CONFIG=app_config_dev.json`. `--debug` enables auto-reload only. The interactive Werkzeug debugger is always off because the dev server listens on all interfaces. Gunicorn ignores these. Production always uses `app_config.json` on `127.0.0.1:5000`.
 
 ### Branch Strategy
 - **`main`** - Production-ready releases
