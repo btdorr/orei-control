@@ -193,3 +193,6 @@ update-status.json.tmp
 
 # Site title and subtitle (see branding.example.json)
 branding.json
+
+# Branch the updater follows instead of main (staging tests)
+.update-branch

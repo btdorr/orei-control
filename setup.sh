@@ -78,9 +78,27 @@ echo "📦 Installing Python dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Add user to dialout group for serial port access
+# Add the admin user to dialout for dev work and test-serial.py
 echo "👤 Adding user to dialout group for serial port access..."
 sudo usermod -a -G dialout $USER
+
+# Dedicated service user. dialout and plugdev cover GPIO and USB serial adapters.
+echo "👤 Creating orei service user..."
+if ! id orei >/dev/null 2>&1; then
+    sudo useradd --system --home-dir /var/lib/orei --create-home --shell /usr/sbin/nologin orei
+fi
+for g in dialout plugdev; do
+    getent group "$g" >/dev/null && sudo usermod -a -G "$g" orei
+done
+
+# Limited root commands for the service (shutdown, restart, update). See orei-control.sudoers.
+sudo visudo -cf "$APP_DIR/orei-control.sudoers"
+sudo install -m 0440 -o root -g root "$APP_DIR/orei-control.sudoers" /etc/sudoers.d/orei-control
+
+# The service user owns the checkout, venv, and runtime files
+sudo chown -R orei:orei "$APP_DIR"
+git config --global --get-all safe.directory 2>/dev/null | grep -qx "$APP_DIR" \
+    || git config --global --add safe.directory "$APP_DIR"
 
 # Create systemd service
 echo "⚙️  Creating systemd service..."
@@ -91,7 +109,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=$USER
+User=orei
+Group=orei
 WorkingDirectory=$APP_DIR
 Environment="PATH=$APP_DIR/venv/bin"
 ExecStart=$APP_DIR/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 1 --threads 4 --timeout 120 app:app

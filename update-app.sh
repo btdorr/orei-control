@@ -1,5 +1,6 @@
 #!/bin/bash
-# Update the Orei Control Panel to the latest commit on $UPDATE_BRANCH (default: main).
+# Update the Orei Control Panel to the latest commit on $UPDATE_BRANCH, the
+# branch named in .update-branch, or main.
 #
 # Run from the web UI (POST /api/system/update starts it as the transient
 # systemd unit orei-update, so restarting the service does not kill it) or
@@ -21,7 +22,10 @@ main() {
     export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
     APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    BRANCH="${UPDATE_BRANCH:-main}"
+    # Branch to follow: UPDATE_BRANCH env (SSH use), else .update-branch file
+    # (staging tests; the UI update cannot pass env through sudo), else main
+    BRANCH="${UPDATE_BRANCH:-$(cat "$APP_DIR/.update-branch" 2>/dev/null || true)}"
+    BRANCH="${BRANCH:-main}"
     SERVICE="orei-control.service"
     HEALTH_URL="http://localhost:5000/api/version"
     LOG="$APP_DIR/update.log"
