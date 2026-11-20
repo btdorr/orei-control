@@ -56,7 +56,6 @@ export class SystemManager {
         const confirmRestartBtn = document.getElementById('confirmRestartBtn');
         const cancelRestartBtn = document.getElementById('cancelRestartBtn');
         const confirmUpdateBtn = document.getElementById('confirmUpdateBtn');
-        const cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
         
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
@@ -87,12 +86,7 @@ export class SystemManager {
                 SystemManager.initiateUpdate();
             });
         }
-        
-        if (cancelUpdateBtn) {
-            cancelUpdateBtn.addEventListener('click', () => {
-                SystemManager.cancelUpdate();
-            });
-        }
+
         
         // Modal close events
         const shutdownModal = document.getElementById('shutdownModal');
@@ -204,7 +198,9 @@ export class SystemManager {
         if (updateCloseBtn) updateCloseBtn.disabled = true;
     }
     
-    static showUpdateComplete() {
+    static showUpdateComplete(message) {
+        const updateCompleteMessage = document.getElementById('updateCompleteMessage');
+        if (updateCompleteMessage && message) updateCompleteMessage.textContent = message;
         const updateStatus = document.getElementById('updateStatus');
         const updateComplete = document.getElementById('updateComplete');
         const updateCloseBtn = document.getElementById('updateCloseBtn');
@@ -253,107 +249,83 @@ export class SystemManager {
     }
     
     static async initiateUpdate() {
-        try {
-            // Show loading state
-            const confirmBtn = document.getElementById('confirmUpdateBtn');
-            if (!confirmBtn) {
-                console.error('Update confirm button not found');
-                return;
-            }
-            
-            const originalText = confirmBtn.innerHTML;
+        const confirmBtn = document.getElementById('confirmUpdateBtn');
+        const updateOutput = document.getElementById('updateOutput');
+        if (confirmBtn) {
             confirmBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Starting Update...';
             confirmBtn.disabled = true;
-            
-            // Show update in progress state
-            SystemManager.showUpdateStatus();
-            
-            const updateOutput = document.getElementById('updateOutput');
-            if (updateOutput) {
-                updateOutput.textContent = 'Initiating system update...\n';
+        }
+        SystemManager.showUpdateStatus();
+        if (updateOutput) updateOutput.textContent = 'Starting update...\n';
+
+        try {
+            const response = await fetch('/api/system/update', { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || `HTTP ${response.status}`);
             }
-            
-            // Start update process with streaming output
-            const response = await fetch('/api/system/update', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error');
-                throw new Error(`Update failed: ${response.status} ${response.statusText} - ${errorText}`);
+
+            const status = await SystemManager.pollUpdate(updateOutput);
+
+            if (status.state === 'success') {
+                if (updateOutput) updateOutput.textContent += '\nWaiting for the service to report the new version...\n';
+                await SystemManager.waitForCommit(status.to);
+                SystemManager.showUpdateComplete(status.message);
+                Utils.showToast('Update completed successfully!', 'success');
+            } else if (status.state === 'up_to_date') {
+                SystemManager.showUpdateComplete(status.message);
+                Utils.showToast('Already up to date', 'info');
+            } else {
+                throw new Error(status.message || `Update ended in state: ${status.state}`);
             }
-            
-            // Handle streaming response
-            if (!response.body) {
-                throw new Error('No response body received from server');
-            }
-            
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            
-            try {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const chunk = decoder.decode(value, { stream: true });
-                    if (updateOutput) {
-                        updateOutput.textContent += chunk;
-                        // Auto-scroll to bottom
-                        updateOutput.scrollTop = updateOutput.scrollHeight;
-                    }
-                }
-            } finally {
-                // Ensure reader is properly closed
-                reader.releaseLock();
-            }
-            
-            // Update completed successfully
-            SystemManager.showUpdateComplete();
-            Utils.showToast('Update completed successfully!', 'success');
-            
         } catch (error) {
             console.error('Update failed:', error);
             SystemManager.showUpdateError(error.message);
             Utils.showToast(`Update failed: ${error.message}`, 'error');
         }
     }
-    
-    static async cancelUpdate() {
-        try {
-            // Clear any existing timer
-            if (SystemManager.timers.update) {
-                clearInterval(SystemManager.timers.update);
-                SystemManager.timers.update = null;
-            }
-            
-            // Send cancel request to backend
-            const response = await fetch('/api/system/update/cancel', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
+
+    // Poll update status until the update unit has finished. Fetch errors are
+    // expected while the service restarts, so keep polling through them.
+    static async pollUpdate(updateOutput) {
+        const finalStates = ['up_to_date', 'success', 'failed', 'rolled_back', 'rollback_failed'];
+        const deadline = Date.now() + 10 * 60 * 1000;
+        while (Date.now() < deadline) {
+            await new Promise(r => setTimeout(r, 1500));
+            try {
+                const response = await fetch('/api/system/update/status', { cache: 'no-store' });
+                if (!response.ok) continue;
                 const data = await response.json();
-                Utils.showToast(data.message || 'Update cancelled successfully', 'info');
-            } else {
-                Utils.showToast('Failed to cancel update', 'warning');
+                if (updateOutput && data.log) {
+                    updateOutput.textContent = data.log;
+                    updateOutput.scrollTop = updateOutput.scrollHeight;
+                }
+                if (!data.active && finalStates.includes(data.status.state)) {
+                    return data.status;
+                }
+            } catch (e) {
+                // Service restarting
             }
-            
-            // Reset modal to initial state
-            SystemManager.resetUpdateModal();
-            
-        } catch (error) {
-            console.error('Failed to cancel update:', error);
-            Utils.showToast('Failed to cancel update', 'error');
         }
+        throw new Error('Timed out waiting for the update to finish');
     }
-    
+
+    // Wait until the running service reports the target commit
+    static async waitForCommit(target) {
+        const deadline = Date.now() + 60 * 1000;
+        while (Date.now() < deadline) {
+            try {
+                const response = await fetch('/api/version', { cache: 'no-store' });
+                const data = await response.json();
+                if (data.running_commit === target) return;
+            } catch (e) {
+                // Service restarting
+            }
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        throw new Error('Update finished, but the service is not reporting the new version');
+    }
+
     static async initiateShutdown() {
         try {
             // Show loading state

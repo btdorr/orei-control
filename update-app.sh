@@ -1,91 +1,143 @@
 #!/bin/bash
-# Update the Orei Control Panel application
+# Update the Orei Control Panel to the latest commit on $UPDATE_BRANCH (default: main).
+#
+# Run from the web UI (POST /api/system/update starts it as the transient
+# systemd unit orei-update, so restarting the service does not kill it) or
+# over SSH as ./update-app.sh.
+#
+# Steps: refuse if tracked files have local changes, fast-forward to
+# origin/$UPDATE_BRANCH, install requirements only if they changed, restart
+# the service, health check. If anything fails after the code changes, it
+# resets to the previous commit and restarts again.
+#
+# Writes progress to update.log and the result to update-status.json.
+# Exit codes: 0 updated or already up to date, 1 failed with no changes,
+# 2 failed and rolled back, 3 rollback failed.
 
-# Set PATH to ensure commands are found
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+# Everything runs inside main() so bash has parsed the whole script before
+# git rewrites this file on disk.
+main() {
+    set -u
+    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "📥 Updating Orei UHD-401MV Control Application..."
+    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    BRANCH="${UPDATE_BRANCH:-main}"
+    SERVICE="orei-control.service"
+    HEALTH_URL="http://localhost:5000/api/version"
+    LOG="$APP_DIR/update.log"
+    STATUS="$APP_DIR/update-status.json"
+    OLD=""
+    NEW=""
+    STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# Get the current directory (should be where the script is located)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR" || {
-    echo "❌ Could not change to application directory: $SCRIPT_DIR"
-    exit 1
-}
+    cd "$APP_DIR" || exit 1
 
-echo "📂 Working in directory: $SCRIPT_DIR"
+    exec 9>"$APP_DIR/.update.lock"
+    if ! flock -n 9; then
+        echo "Another update is already running"
+        exit 1
+    fi
 
-# Backup current configuration
-echo "💾 Backing up configuration..."
-if [ -f roku_devices.json ]; then
-    cp roku_devices.json roku_devices.json.backup
-    echo "✅ Backed up roku_devices.json"
-else
-    echo "ℹ️  No configuration file to backup"
-fi
+    : > "$LOG"
+    exec > >(tee -a "$LOG") 2>&1
 
-# Note: Service management not available in container environment
-echo "ℹ️  Service management skipped (container environment)"
+    write_status running "Update started"
+    echo "Updating $APP_DIR from origin/$BRANCH"
 
-# Update the code
-echo "📡 Updating code from repository..."
-if git status &>/dev/null; then
-    # This is a git repository
-    git fetch
-    if git pull; then
-        echo "✅ Code updated successfully"
+    local current
+    current="$(git branch --show-current)"
+    if [ "$current" != "$BRANCH" ]; then
+        fail_unchanged "Checked out branch is '$current', expected '$BRANCH'"
+    fi
+
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        git status --short --untracked-files=no
+        fail_unchanged "Tracked files have local changes. Commit or discard them first"
+    fi
+
+    OLD="$(git rev-parse HEAD)"
+    echo "Fetching origin/$BRANCH..."
+    if ! git fetch origin "$BRANCH"; then
+        fail_unchanged "git fetch failed"
+    fi
+    NEW="$(git rev-parse "origin/$BRANCH")"
+
+    if [ "$OLD" = "$NEW" ]; then
+        echo "Already up to date at $(short "$OLD")"
+        write_status up_to_date "Already up to date"
+        exit 0
+    fi
+
+    echo "Updating $(short "$OLD") -> $(short "$NEW")"
+    git log --oneline "$OLD..$NEW"
+    if ! git merge --ff-only "origin/$BRANCH"; then
+        fail_unchanged "Fast-forward failed. Local branch has diverged from origin/$BRANCH"
+    fi
+
+    if ! git diff --quiet "$OLD" "$NEW" -- requirements.txt; then
+        echo "requirements.txt changed, installing dependencies..."
+        if ! venv/bin/pip install -r requirements.txt; then
+            rollback "Dependency install failed"
+        fi
     else
-        echo "⚠️  Git pull failed - you may need to resolve conflicts manually"
+        echo "requirements.txt unchanged, skipping dependency install"
     fi
-else
-    echo "⚠️  Not a git repository - manual update required"
-fi
 
-# Update Python dependencies
-echo "📦 Updating Python dependencies..."
-source venv/bin/activate || {
-    echo "❌ Could not activate virtual environment"
+    if ! restart_and_check; then
+        rollback "Service did not become healthy after restart"
+    fi
+
+    echo "Update complete: now at $(short "$NEW")"
+    write_status success "Updated to $(short "$NEW")"
+    exit 0
+}
+
+short() { git rev-parse --short "$1"; }
+
+write_status() {
+    # $1 state, $2 message. States: running, up_to_date, success, failed, rolled_back, rollback_failed
+    local msg="${2//\"/\'}"
+    printf '{"state": "%s", "message": "%s", "from": "%s", "to": "%s", "branch": "%s", "started": "%s", "updated": "%s"}\n' \
+        "$1" "$msg" "$OLD" "$NEW" "$BRANCH" "$STARTED" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$STATUS.tmp"
+    mv "$STATUS.tmp" "$STATUS"
+}
+
+fail_unchanged() {
+    echo "FAILED: $1"
+    write_status failed "$1"
     exit 1
 }
 
-pip install --upgrade pip
-if pip install --upgrade -r requirements.txt; then
-    echo "✅ Dependencies updated successfully"
-else
-    echo "❌ Failed to update dependencies"
-    exit 1
-fi
+restart_and_check() {
+    echo "Restarting $SERVICE..."
+    sudo -n systemctl restart "$SERVICE" || return 1
+    local i
+    for i in $(seq 1 30); do
+        sleep 1
+        if systemctl is-active --quiet "$SERVICE" && curl -fsS -m 3 -o /dev/null "$HEALTH_URL"; then
+            echo "Health check passed after ${i}s"
+            return 0
+        fi
+    done
+    echo "Health check failed after 30s"
+    sudo -n journalctl -u "$SERVICE" -n 20 --no-pager || true
+    return 1
+}
 
-# Set permissions (where possible)
-echo "🔧 Setting permissions..."
-chmod +x *.py *.sh 2>/dev/null || echo "⚠️  Permission setting skipped"
-
-# Service restart handled automatically by container orchestration
-echo "ℹ️  Service restart handled automatically"
-
-# Wait for changes to settle
-sleep 2
-
-# Check status
-echo ""
-echo "=== Update Complete ==="
-echo "✅ Application updated successfully"
-
-# Show version info if available
-if [ -f .git/HEAD ]; then
-    COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
-    if [ -n "$COMMIT" ]; then
-        echo "📌 Current commit: $COMMIT"
+rollback() {
+    echo "FAILED: $1"
+    echo "Rolling back to $(short "$OLD")..."
+    write_status running "$1. Rolling back"
+    if git reset --hard "$OLD" \
+        && { git diff --quiet "$OLD" "$NEW" -- requirements.txt || venv/bin/pip install -r requirements.txt; } \
+        && restart_and_check; then
+        echo "Rolled back to $(short "$OLD")"
+        write_status rolled_back "$1. Rolled back to $(short "$OLD")"
+        exit 2
     fi
-fi
+    echo "ROLLBACK FAILED. Manual recovery needed (see /opt/orei-control-backups)"
+    write_status rollback_failed "$1. Rollback also failed"
+    exit 3
+}
 
-# Show network access
-IP=$(hostname -I | cut -d' ' -f1 | head -n1)
-if [ -n "$IP" ]; then
-    echo "🌐 Web interface: http://$IP"
-else
-    echo "🌐 Web interface: http://localhost"
-fi
-
-echo ""
-echo "💡 Run ./check-status.sh for detailed status information" 
+main "$@"

@@ -184,3 +184,9 @@ temp/
 roku_devices.json
 app_config.json
 .dev-server.pid
+
+# Update runtime files
+update.log
+update-status.json
+update-status.json.tmp
+.update.lock

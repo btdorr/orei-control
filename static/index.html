@@ -577,8 +577,9 @@
                     <p>This update process will:</p>
                     <ul>
                         <li>Download the latest code from the repository</li>
-                        <li>Update Python dependencies</li>
-                        <li>Restart the control panel service</li>
+                        <li>Install Python dependencies if they changed</li>
+                        <li>Restart the control panel service and check it responds</li>
+                        <li>Roll back to the current version if the restart fails</li>
                         <li>Preserve your current configuration</li>
                     </ul>
                     <p class="text-muted">
@@ -608,7 +609,7 @@
                     <div id="updateComplete" style="display: none;" aria-live="assertive">
                         <div class="alert alert-success" role="alert">
                             <i class="bi bi-check-circle me-2"></i>
-                            <strong>Update Complete!</strong> The system has been successfully updated.
+                            <strong>Update Complete!</strong> <span id="updateCompleteMessage">The system has been successfully updated.</span>
                         </div>
                         <p>The page will automatically refresh in <span id="refreshCountdown" aria-live="polite">5</span> seconds to show the updated version.</p>
                     </div>
@@ -629,9 +630,6 @@
                         </button>
                     </div>
                     <div id="updateActiveActions" style="display: none;">
-                        <button type="button" class="btn btn-warning" id="cancelUpdateBtn">
-                            <i class="bi bi-x-circle me-2"></i>Cancel Update
-                        </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
@@ -692,6 +690,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="static/js/main.js?v=20250605091045"></script>
+    <script type="module" src="static/js/main.js?v=20261120"></script>
 </body>
 </html>
