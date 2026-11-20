@@ -190,3 +190,6 @@ update.log
 update-status.json
 update-status.json.tmp
 .update.lock
+
+# Site title and subtitle (see branding.example.json)
+branding.json
