@@ -104,14 +104,7 @@ export const Device = {
         } else if (VARIANT[state.mode]) {
             const match = (await api.command(`r ${VARIANT[state.mode]} mode!`))?.match(/mode (\d)/);
             if (match) update({ submode: Number(match[1]) });
-            await this.readAspect();
         }
-    },
-
-    async readAspect() {
-        if (!VARIANT[state.mode]) return;
-        const reply = await api.command(`r ${VARIANT[state.mode]} aspect!`);
-        if (reply) update({ aspect: /full screen/i.test(reply) ? 1 : 2 });
     },
 
     async readAudio() {
@@ -132,7 +125,6 @@ export const Device = {
         update({
             mode: layout.mode,
             submode: layout.submode ?? state.submode,
-            aspect: sameMode ? state.aspect : null,
             ...(sameMode ? {} : this.cachedInputs(layout.mode)),
         });
         if (await api.command(`s multiview ${layout.mode}!`) === null) {
@@ -143,7 +135,6 @@ export const Device = {
         saveUiState();
         await this.readInputs();
         saveUiState();
-        await this.readAspect();
     },
 
     async setPip(patch) {
@@ -202,10 +193,4 @@ export const Device = {
 
     setResolution(n) { return api.command(`s output res ${n}!`); },
     setHdcp(n) { return api.command(`s output hdcp ${n}!`); },
-    async setAspect(aspect) {
-        if (!VARIANT[state.mode]) return;
-        const before = state.aspect;
-        update({ aspect });
-        if (await api.command(`s ${VARIANT[state.mode]} aspect ${aspect}!`) === null) update({ aspect: before });
-    },
 };

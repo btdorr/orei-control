@@ -28,7 +28,6 @@ export const state = {
     submode: saved.submode || 1,
     pipPosition: saved.pipPosition || 3,
     pipSize: saved.pipSize || 1,
-    aspect: null,           // PBP/triple/quad window shape: 1 = fill screen, 2 = keep 16:9 (null = not read yet)
     windowInputs: { 1: 1, 2: 2, 3: 3, 4: 4, ...(saved.windowInputs || {}) },
     // The matrix keeps window inputs separately for each mode (PIP window 2 and PBP window 2 can differ).
     // Mode -> {window: input}, so a layout switch draws the right inputs before the read confirms them.
