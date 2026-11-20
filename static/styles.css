@@ -160,6 +160,15 @@ body {
     color: var(--text-muted);
 }
 
+/* Disabled (device offline). Bootstrap's default disabled background is light
+   gray in both themes, which hid the light dark-theme text. */
+.form-control:disabled, .form-select:disabled {
+    background-color: var(--bg-tertiary);
+    border-color: var(--input-border);
+    color: var(--text-secondary);
+    opacity: 1;
+}
+
 .form-label {
     color: var(--text-primary);
     font-weight: 500;
