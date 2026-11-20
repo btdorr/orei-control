@@ -24,10 +24,12 @@
     --code-bg: #f8f9fa;
     --scrollbar-bg: #e9ecef;
     --scrollbar-thumb: #adb5bd;
+    --range-track: #adb5bd;
 }
 
 /* Dark mode colors */
 [data-theme="dark"] {
+    --range-track: #666666;
     --bg-primary: #1a1a1a;
     --bg-secondary: #2a2a2a;
     --bg-tertiary: #3a3a3a;
@@ -174,6 +176,14 @@ body {
 
 .form-range::-moz-range-thumb {
     background-color: #0066cc;
+}
+
+.form-range::-webkit-slider-runnable-track {
+    background-color: var(--range-track);
+}
+
+.form-range::-moz-range-track {
+    background-color: var(--range-track);
 }
 
 /* Display diagram */

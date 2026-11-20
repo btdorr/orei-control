@@ -26,6 +26,8 @@ export const DisplayManager = {
         document.addEventListener('rokuMappingsChanged', () => {
             this.updateWindowInputControls();
             this.fillInputOptions(document.getElementById('windowInputSelect'));
+            this.relabelInputOptions(document.getElementById('audioSource'));
+            this.relabelInputOptions(document.getElementById('audioSourceAdvanced'));
         });
 
         document.addEventListener('windowInputsChanged', () => {
@@ -435,6 +437,15 @@ export const DisplayManager = {
     inputLabel(hdmi) {
         const name = window.RokuControl?.mappings?.[hdmi]?.name;
         return name ? `${name} (HDMI ${hdmi})` : `HDMI ${hdmi}`;
+    },
+
+    // Relabel HDMI 1-4 options in place, leaving other options (e.g. "Follow Window 1") alone
+    relabelInputOptions(select) {
+        if (!select) return;
+        for (const option of select.options) {
+            const hdmi = Number(option.value);
+            if (hdmi >= 1 && hdmi <= 4) option.textContent = this.inputLabel(hdmi);
+        }
     },
 
     // Replace a select's options with HDMI 1-4, keeping its current value

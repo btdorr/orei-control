@@ -354,7 +354,7 @@ export const RokuControl = {
         container.innerHTML = `
             <div class="card roku-remote">
                 <div class="card-header text-center">
-                    <h6 class="mb-0">HDMI ${hdmi} - ${device.name}</h6>
+                    <h6 class="mb-0">${device.name} (HDMI ${hdmi})</h6>
                 </div>
                 <div class="card-body">
                     <!-- Power and Home -->
