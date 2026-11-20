@@ -153,14 +153,16 @@ function renderRemote() {
             <div class="grow"><h3>${esc(inputName(hdmi))}</h3><p>Window ${win}, HDMI ${hdmi}</p></div>
             <button class="toggle" data-sound-here="${hdmi}" aria-pressed="${soundHere}">${soundHere ? 'Sound is from here' : 'Play sound from here'}</button>
         </div>
-        <div class="row3">${b('Back', icon('back'), 'Back', 'lbl')}${b('Home', icon('home'), 'Home', 'lbl')}${b('Info', icon('star'), 'Options', 'lbl')}</div>
+        <div class="r-body">
+        <div class="row3 r-nav">${b('Back', icon('back'), 'Back', 'lbl')}${b('Home', icon('home'), 'Home', 'lbl')}${b('Info', icon('star'), 'Options', 'lbl')}</div>
         <div class="dpad">
             <span></span>${b('Up', icon('up'), 'Up')}<span></span>
             ${b('Left', icon('left'), 'Left')}<button class="rb ok" data-key="Select" aria-label="OK">OK</button>${b('Right', icon('right'), 'Right')}
             <span></span>${b('Down', icon('down'), 'Down')}<span></span>
         </div>
-        <div class="row3">${b('Rev', icon('rew', true), 'Rewind')}${b('Play', icon('pp', true), 'Play/Pause', 'play')}${b('Fwd', icon('fwd', true), 'Fast forward')}</div>
-        <div class="row3">${b('VolumeDown', icon('vdown'), 'Roku volume down')}${b('VolumeMute', icon('mute'), 'Roku mute')}${b('VolumeUp', icon('vup'), 'Roku volume up')}</div>
+        <div class="row3 r-media">${b('Rev', icon('rew', true), 'Rewind')}${b('Play', icon('pp', true), 'Play/Pause', 'play')}${b('Fwd', icon('fwd', true), 'Fast forward')}</div>
+        <div class="row3 r-vol">${b('VolumeDown', icon('vdown'), 'Roku volume down')}${b('VolumeMute', icon('mute'), 'Roku mute')}${b('VolumeUp', icon('vup'), 'Roku volume up')}</div>
+        </div>
         <div class="r-foot">
             <span class="last" id="last" aria-live="polite">${esc(lastSent)}</span>
             <span class="btn-row">${b('Power', icon('power'), 'Roku power')}<button class="btn" data-play-all>Play/Pause all Rokus</button></span>

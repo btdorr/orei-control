@@ -220,7 +220,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .toggle[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
 /* Remote */
-.remote { display: grid; gap: 14px; border-top: 6px solid var(--c, var(--line)); }
+.side { display: contents; }
+.remote { display: grid; gap: 14px; border-top: 6px solid var(--c, var(--line)); container: remote / inline-size; }
+.r-body { display: grid; gap: 14px; }
 .r-head { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .r-head .grow { flex: 1 1 140px; min-width: 0; }
 .r-head h3 { font-family: var(--font-ui); font-weight: 500; font-size: 19px; margin: 0; line-height: 1.2; overflow-wrap: anywhere; }
@@ -324,7 +326,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 @container (min-width: 1000px) {
     /* Height is the limit in landscape: the left column width sets the TV height */
     .app { gap: 12px; }
-    .main { gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(360px, 1.2fr); }
+    .main {
+        gap: 12px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        grid-template-areas: "tv side" "layouts side" "sources side"; grid-template-rows: auto auto 1fr;
+    }
+    /* Remote first, sound under it */
+    .side { display: flex; flex-direction: column; gap: 12px; grid-area: side; min-width: 0; }
+    .side .a-sound { order: 2; }
     .tv { padding-bottom: 14px; }
     .tv::after { bottom: 5px; }
     .sources { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -342,3 +350,17 @@ button:disabled { opacity: 0.5; cursor: default; }
 .sheet details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 500; }
 .sheet details[open] > summary { margin-bottom: 8px; }
 .sheet details > :not(summary) + * { margin-top: 8px; }
+
+/* Wide remote: D-pad beside the button rows, so the remote is short and nothing stretches */
+@container remote (min-width: 440px) {
+    .r-body {
+        grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+        grid-template-areas: "dpad nav" "dpad media" "dpad vol";
+        align-items: center; column-gap: 16px; row-gap: 8px;
+    }
+    .r-body .dpad { grid-area: dpad; width: 100%; }
+    .r-nav { grid-area: nav; } .r-media { grid-area: media; } .r-vol { grid-area: vol; }
+}
+
+/* Grid items default to min-width: auto, which let the header grow to the title width on phones */
+.app > * { min-width: 0; }
