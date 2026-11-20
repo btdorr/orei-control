@@ -100,6 +100,53 @@ def load_branding():
     return branding
 
 
+# Last known Remote Control tab state (mode, window inputs, audio), saved by the
+# UI after each refresh or change and embedded in the page for the first paint.
+UI_STATE_FILE = 'ui_state.json'
+
+
+def _int_in(value, low, high):
+    return isinstance(value, int) and not isinstance(value, bool) and low <= value <= high
+
+
+def validate_ui_state(data):
+    """Keep only known, in-range fields. Partial updates are allowed."""
+    if not isinstance(data, dict):
+        return {}
+    clean = {}
+    if _int_in(data.get('mode'), 1, 5):
+        clean['mode'] = data['mode']
+    inputs = data.get('windowInputs')
+    if isinstance(inputs, dict):
+        valid = {str(k): v for k, v in inputs.items() if str(k) in ('1', '2', '3', '4') and _int_in(v, 1, 4)}
+        if valid:
+            clean['windowInputs'] = valid
+    if _int_in(data.get('audioSource'), 0, 4):
+        clean['audioSource'] = data['audioSource']
+    if _int_in(data.get('volume'), 0, 100):
+        clean['volume'] = data['volume']
+    if isinstance(data.get('muted'), bool):
+        clean['muted'] = data['muted']
+    return clean
+
+
+def load_ui_state():
+    if os.path.exists(UI_STATE_FILE):
+        try:
+            with open(UI_STATE_FILE, 'r') as f:
+                return validate_ui_state(json.load(f))
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {}
+
+
+def save_ui_state(state):
+    tmp = UI_STATE_FILE + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(state, f, indent=2)
+    os.replace(tmp, UI_STATE_FILE)
+
+
 # Roku device configuration file
 ROKU_CONFIG_FILE = 'roku_devices.json'
 
@@ -579,6 +626,9 @@ def index():
     branding = load_branding()
     page = page.replace('__APP_TITLE__', html.escape(branding['title']))
     page = page.replace('__APP_SUBTITLE__', html.escape(branding['subtitle']))
+    # Last known device state, so the first paint matches the device.
+    # '<' is escaped so the JSON cannot close the surrounding <script> tag.
+    page = page.replace('__APP_STATE__', json.dumps(load_ui_state()).replace('<', '\\u003c'))
     return page
 
 def get_running_commit():
@@ -949,6 +999,23 @@ def roku_launch_app():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/ui-state', methods=['POST'])
+def set_ui_state():
+    """Merge a snapshot of the Remote Control tab state into ui_state.json"""
+    try:
+        update = validate_ui_state(request.get_json(silent=True))
+        if not update:
+            return jsonify({'success': False, 'error': 'No valid state fields'}), 400
+        state = load_ui_state()
+        state.update(update)
+        if 'windowInputs' in update:
+            state['windowInputs'] = {**load_ui_state().get('windowInputs', {}), **update['windowInputs']}
+        save_ui_state(state)
+        return jsonify({'success': True, 'state': state})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # System Management API endpoint
 @app.route('/api/system/shutdown', methods=['POST'])

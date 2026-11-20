@@ -2,6 +2,7 @@
 
 import { API } from './api.js';
 import { Utils } from './utils.js';
+import { UiState } from './state.js';
 
 export const AudioControl = {
     VOLUME_SLIDERS: ['volumeSlider', 'remoteVolumeSlider'],
@@ -78,11 +79,13 @@ export const AudioControl = {
     // Set audio source
     async setSource(source) {
         await API.sendCommand(`s output audio ${source}!`);
+        UiState.save();
     },
     
     // Set volume
     async setVolume(volume) {
         await API.sendCommandSilent(`s output audio vol ${volume}!`);
+        UiState.save();
     },
     
     // Update every volume slider and readout to the same value
@@ -100,6 +103,7 @@ export const AudioControl = {
     // Toggle mute
     async toggleMute(muted) {
         await API.sendCommand(`s output audio mute ${muted ? '1' : '0'}!`);
+        UiState.save();
         
         // Sync both mute switches
         const muteSwitch = document.getElementById('muteSwitch');
