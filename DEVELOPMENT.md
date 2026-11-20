@@ -104,10 +104,10 @@ git push origin main
 | Script | Purpose |
 |--------|---------|
 | `setup.sh` | Install production environment |
-| `deploy-production.sh` | Safe production deployment |
+| `deploy-production.sh` | Full backup, then `update-app.sh` |
 | `check-status.sh` | Check production system status |
 | `restart-service.sh` | Restart production service |
-| `update-app.sh` | Update production app |
+| `update-app.sh` | Fast-forward to main, restart, health check, roll back on failure. Also run by the web UI |
 
 ## 🔒 Safety Features
 
@@ -119,10 +119,10 @@ git push origin main
 - ✅ Non-destructive to production
 
 ### Production Safety
-- ✅ Automatic backups before deployment
-- ✅ Rollback capability on failure
-- ✅ Service health checking
-- ✅ Dependency conflict detection
+- ✅ Full backup before SSH deploys (`deploy-production.sh`, last 5 kept)
+- ✅ Git rollback to the previous commit if the restart or health check fails
+- ✅ Refuses to update a tree with local changes to tracked files
+- ✅ Dependencies installed only when `requirements.txt` changes
 - ⚠️ Not zero-downtime: the service is stopped during the update and restarted after
 
 ## 🎯 Deployment Strategies
@@ -217,11 +217,14 @@ Pi 2: Development only (~/orei-control-dev, develop branch)
 ### Rollback Production
 ```bash
 cd /opt/orei-control
-./deploy-production.sh  # Will auto-rollback on failure
+./deploy-production.sh  # rolls back to the previous commit on failure
+cat update-status.json  # result of the last update
+cat update.log          # its output
 
-# Manual rollback
+# Manual restore from a full backup (if update-app.sh reports rollback_failed)
 sudo systemctl stop orei-control.service
-sudo cp -r /opt/orei-control-backups/backup_YYYYMMDD_HHMMSS/* /opt/orei-control/
+sudo rm -rf /opt/orei-control
+sudo cp -a /opt/orei-control-backups/backup_YYYYMMDD_HHMMSS /opt/orei-control
 sudo systemctl start orei-control.service
 ```
 
@@ -299,9 +302,9 @@ curl -I http://localhost:5000
 The port is opened exclusively. If `orei-control.service` holds it, the dev server cannot open it. Stop the service first.
 
 **Production deployment fails:**
-- Check backup directory exists
-- Verify git repository is clean
-- Check network connectivity
+- Read `update.log` and `update-status.json` in `/opt/orei-control`
+- "Tracked files have local changes": run `git status`. Discard with `git checkout -- .` if the changes are not needed
+- "Fast-forward failed": the local branch has commits that are not on origin. Resolve manually
 - Review service logs
 
 **Serial port conflicts:**

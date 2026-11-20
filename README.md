@@ -160,8 +160,8 @@ Both are created at runtime in the app's working directory and are gitignored.
 ├── test-serial.py                  # Hardware check: serial port probe
 ├── test-roku.py                    # Hardware check: Roku discovery
 ├── setup.sh                        # Production install (/opt/orei-control)
-├── deploy-production.sh            # Backup, pull main, restart, rollback on failure
-├── update-app.sh                   # In-place update (used by the web UI update button)
+├── deploy-production.sh            # SSH deploy: full backup, then update-app.sh
+├── update-app.sh                   # The updater, used by the web UI and deploy-production.sh
 ├── restart-service.sh / check-status.sh
 ├── dev-setup.sh                    # Creates ~/orei-control-dev on the develop branch
 ├── DEVELOPMENT.md                  # Dev and production workflow
@@ -189,10 +189,11 @@ Both are created at runtime in the app's working directory and are gitignored.
 - `POST /api/roku/launch` - Launch an app on a mapped Roku device
 
 ### System
-These call `sudo shutdown` or run `update-app.sh`, so the service user needs passwordless sudo for `/usr/sbin/shutdown`.
+These call `sudo shutdown` or `sudo systemd-run`, so the service user needs passwordless sudo for `/usr/sbin/shutdown`, `systemd-run`, `systemctl`, and `journalctl`.
 - `POST /api/system/shutdown` and `/api/system/shutdown/cancel` - Shut down the Pi in 1 minute, or cancel
 - `POST /api/system/restart` and `/api/system/restart/cancel` - Reboot the Pi in 1 minute, or cancel
-- `POST /api/system/update` and `/api/system/update/cancel` - Run `update-app.sh`, or cancel
+- `POST /api/system/update` - Start `update-app.sh` as the transient systemd unit `orei-update` (returns 202)
+- `GET /api/system/update/status` - Update state, log, and whether the unit is still running
 
 ## Troubleshooting
 
@@ -253,6 +254,16 @@ nmap -p 8060 --open $(ip route | grep 'scope link' | awk '{print $1}' | head -1)
 - **Event-Driven**: Component communication via custom events
 - **Serialized**: All device communication goes through one lock in `SerialManager`, and the port is opened exclusively so a second process cannot send commands at the same time
 - **Responsive**: Layouts for phone, tablet, and desktop
+
+### Updates
+The System Update menu and `deploy-production.sh` both run `update-app.sh`. It:
+1. Refuses to run if tracked files have local changes or the checked-out branch is not `main` (override with `UPDATE_BRANCH`).
+2. Fast-forwards to `origin/main`. It never merges or rebases.
+3. Runs `pip install -r requirements.txt` only if `requirements.txt` changed.
+4. Restarts `orei-control.service` and checks `/api/version` for 30 seconds.
+5. On failure after the code changed, resets to the previous commit and restarts again.
+
+The UI starts it as a separate systemd unit so the restart does not kill it. Progress goes to `update.log` and the result to `update-status.json`. After a successful update, the UI waits until `/api/version` reports the new `running_commit`, then reloads.
 
 ### Versioning
 A GitHub Action writes `version.json` (`1.<commits/10>.<commits%10>`) and commits it to `main` with `[skip ci]` on every push. Pull before pushing to `main` again.
