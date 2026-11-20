@@ -134,11 +134,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .panel h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 10px; }
 
 /* The TV */
-.tv { background: var(--bezel); border-radius: 16px; padding: 10px 10px 18px; position: relative; }
-.tv::after {
-    content: ""; position: absolute; left: 50%; bottom: 6px; width: 40px; height: 4px; margin-left: -20px;
-    border-radius: 2px; background: color-mix(in srgb, var(--bezel) 60%, #fff 20%);
-}
+.tv { background: var(--bezel); border-radius: 16px; padding: 10px; }
 .screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; background: var(--screen); border-radius: 6px; overflow: hidden; container-type: inline-size; }
 .win {
     position: absolute; border: 0; padding: 0; cursor: pointer; text-align: left;
@@ -330,11 +326,12 @@ button:disabled { opacity: 0.5; cursor: default; }
         gap: 12px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
         grid-template-areas: "tv side" "layouts side" "sources side"; grid-template-rows: auto auto 1fr;
     }
-    /* Remote first, sound under it */
+    /* Sound above the remote */
     .side { display: flex; flex-direction: column; gap: 12px; grid-area: side; min-width: 0; }
-    .side .a-sound { order: 2; }
-    .tv { padding-bottom: 14px; }
-    .tv::after { bottom: 5px; }
+    .side .a-sound { order: -1; }
+    /* Size the TV from the visible height (Safari's toolbars included), so the input buttons
+       stay on screen. 364px is everything else in the left column plus the TV bezel. */
+    .tv { max-width: max(320px, calc((100dvh - 364px) * 16 / 9 + 20px)); margin-inline: auto; }
     .sources { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .src { padding: 8px; gap: 8px; }
     /* One row of pictures so the whole screen fits a landscape tablet. Names stay for screen readers. */
