@@ -33,10 +33,10 @@ export const Roku = {
         return data.devices || [];
     },
 
-    // Returns true when the Roku accepted the key
-    async key(hdmi, key) {
+    // Returns true when the Roku accepted the key. hold = long press (about 1 second on the Roku).
+    async key(hdmi, key, hold = false) {
         try {
-            const data = await api.post('/api/roku/command', { hdmi, command: key });
+            const data = await api.post('/api/roku/command', { hdmi, command: key, ...(hold && { hold: true }) });
             if (data.success) return true;
             notify(`${state.rokus[hdmi]?.name || 'The Roku'} did not respond. Check that it is on and connected.`);
         } catch (e) {

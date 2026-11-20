@@ -182,7 +182,7 @@ function renderRemote() {
         <div class="row3 r-nav">${b('Back', icon('back'), 'Back', 'lbl')}${b('Home', icon('home'), 'Home', 'lbl')}${b('Info', icon('star'), 'Options', 'lbl')}</div>
         <div class="dpad">
             <span></span>${b('Up', icon('up'), 'Up')}<span></span>
-            ${b('Left', icon('left'), 'Left')}<button class="rb ok" data-key="Select" aria-label="OK">OK</button>${b('Right', icon('right'), 'Right')}
+            ${b('Left', icon('left'), 'Left')}<button class="rb ok" data-key="Select" data-hold aria-label="OK" title="Hold for more options">OK</button>${b('Right', icon('right'), 'Right')}
             <span></span>${b('Down', icon('down'), 'Down')}<span></span>
         </div>
         <div class="row3 r-media">${b('Rev', icon('rew', true), 'Rewind')}${b('Play', icon('pp', true), 'Play/Pause', 'play')}${b('Fwd', icon('fwd', true), 'Fast forward')}</div>
@@ -192,6 +192,22 @@ function renderRemote() {
             <span class="last" id="last" aria-live="polite">${esc(lastSent)}</span>
             <span class="btn-row">${b('Power', icon('power'), 'Roku power')}<button class="btn" data-play-all>Play/Pause all Rokus</button></span>
         </div>`;
+}
+
+// Long press on a [data-hold] key (OK): fires while the finger is still down, like the physical remote
+const HOLD_MS = 600;
+let holdTimer;
+let held = null;        // button whose long press was sent, so its click does not also send a short press
+
+async function longPress(t) {
+    held = t;
+    const hdmi = state.windowInputs[state.selected];
+    t.classList.remove('fail');
+    t.classList.add('holding');
+    const ok = await Roku.key(hdmi, t.dataset.key, true);
+    t.classList.remove('holding');
+    if (ok) setLast(`Held ${t.getAttribute('aria-label')} on ${inputName(hdmi)}`);
+    else t.classList.add('fail');
 }
 
 // Confirmation under the remote ("Sent Left to Matrix 1"). Clears after 3 seconds so it never goes stale.
@@ -244,6 +260,7 @@ export const Views = {
             } else if (t.id === 'mute') {
                 Device.setMute(!state.muted);
             } else if (d.key) {
+                if (t === held) { held = null; return; }   // the long press already sent it
                 const hdmi = state.windowInputs[state.selected];
                 t.classList.remove('fail');
                 const ok = await Roku.key(hdmi, d.key);
@@ -268,7 +285,17 @@ export const Views = {
             if (!rb) return;
             rb.classList.add('hit');
             setTimeout(() => rb.classList.remove('hit'), 140);
+            held = null;
+            if (rb.hasAttribute('data-hold')) {
+                clearTimeout(holdTimer);
+                holdTimer = setTimeout(() => longPress(rb), HOLD_MS);
+            }
         });
+        const endHold = () => clearTimeout(holdTimer);
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(type =>
+            document.addEventListener(type, e => { if (e.target.closest?.('[data-hold]')) endHold(); }, true));
+        // Touch long press would otherwise open the browser's own menu
+        document.addEventListener('contextmenu', e => { if (e.target.closest('[data-hold]')) e.preventDefault(); });
 
         const vol = $('vol');
         vol.addEventListener('input', () => {
