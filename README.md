@@ -126,7 +126,7 @@ OREI_CONFIG=app_config_dev.json python app.py --port 8080 --debug
 ### Runtime Files
 These live in the app's working directory and are gitignored, so updates never overwrite them.
 - `app_config.json`: serial port and baud rate, saved from the Advanced Settings tab. Override the filename with the `OREI_CONFIG` environment variable.
-- `roku_devices.json`: Roku device to HDMI input mappings. Roku IPs are stored here, so update it if devices move to a new subnet. The device names also label the Window Input Sources dropdowns, as `Name (HDMI n)`.
+- `roku_devices.json`: Roku device to HDMI input mappings. Roku IPs are stored here, so update it if devices move to a new subnet. The device names also label the window input and audio source dropdowns and the remote headers, as `Name (HDMI n)`.
 - `branding.json`: optional page title and subtitle. Copy `branding.example.json` and edit it. Changes apply on the next page load, with no restart. Either key can be left out to keep the default.
 
 ### Network Requirements
