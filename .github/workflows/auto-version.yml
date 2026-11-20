@@ -37,11 +37,14 @@ jobs:
     - name: Calculate version
       id: version
       run: |
-        # Major version starts at 1, minor increments every 10 commits, patch is remainder
+        # Major version is set by hand. Minor increments every 10 commits since the major
+        # release started, patch is the remainder. 2.0.0 = commit 111 on main (TV-first UI release).
         COMMIT_COUNT=${{ steps.commit_count.outputs.count }}
-        MAJOR=1
-        MINOR=$((COMMIT_COUNT / 10))
-        PATCH=$((COMMIT_COUNT % 10))
+        MAJOR=2
+        MAJOR_BASE=111
+        SINCE=$((COMMIT_COUNT - MAJOR_BASE))
+        MINOR=$((SINCE / 10))
+        PATCH=$((SINCE % 10))
         VERSION="$MAJOR.$MINOR.$PATCH"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
     
