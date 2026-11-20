@@ -309,20 +309,25 @@ export const DeviceControl = {
     async setDisplayMode(mode) {
         await API.sendCommand(`s multiview ${mode}!`);
         window.oreiApp.currentMode = parseInt(mode);
-        await DisplayManager.updateModeSettings();
-        
-        // Get window inputs for new mode, then update diagram
-        await DisplayManager.getWindowInputs();
-        
-        // Update window input controls after window inputs are loaded
+
+        // Draw the Remote Control tab right away from the last known window
+        // inputs. Serial commands run one at a time, so waiting for the reads
+        // below delayed the Roku remotes by ~1s (several seconds before the
+        // serial reader fix).
         DisplayManager.updateWindowInputControls();
-        
         DisplayManager.updateDiagram();
-        
-        // Trigger display mode changed event for Roku remotes
         document.dispatchEvent(new CustomEvent('displayModeChanged', {
             detail: { mode: parseInt(mode) }
         }));
+
+        // Confirm the actual inputs. getWindowInputs() fires windowInputsChanged,
+        // which redraws the remotes and input controls.
+        await DisplayManager.getWindowInputs();
+
+        // Advanced Settings values for the new mode last. Nothing on the Remote
+        // Control tab depends on them. The diagram uses them for PIP layout.
+        await DisplayManager.updateModeSettings();
+        DisplayManager.updateDiagram();
     },
     
     // Refresh all settings
