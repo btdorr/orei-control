@@ -196,3 +196,7 @@ branding.json
 
 # Branch the updater follows instead of main (staging tests)
 .update-branch
+
+# Last known Remote Control tab state (see UiState)
+ui_state.json
+ui_state.json.tmp
