@@ -4,6 +4,7 @@ Orei UHD-404MV HDMI Multiviewer Control Server
 Flask-based web application for RS-232 control
 """
 
+import argparse
 import json
 import os
 import time
@@ -30,7 +31,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
-APP_CONFIG_FILE = 'app_config.json'
+APP_CONFIG_FILE = os.environ.get('OREI_CONFIG', 'app_config.json')
 
 # Global variable to track update process
 update_process = None
@@ -1117,17 +1118,24 @@ def internal_error(error):
 
 def main():
     """Main entry point"""
-    # Try to connect to serial port on startup
-    if serial_manager.connect():
-        logger.info("Successfully connected to Orei device")
-    else:
-        logger.warning("Could not connect to serial port on startup")
-        
+    parser = argparse.ArgumentParser(description='Orei Control Panel server')
+    parser.add_argument('--port', type=int, default=5000)
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
+
+    # In debug mode the reloader runs main() in a watcher process too.
+    # Only the serving process should open the serial port.
+    if not args.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        if serial_manager.connect():
+            logger.info("Successfully connected to Orei device")
+        else:
+            logger.warning("Could not connect to serial port on startup")
+
     # Run Flask app
     app.run(
         host='0.0.0.0',  # Allow external connections
-        port=5000,
-        debug=False  # Disable debug mode for production
+        port=args.port,
+        debug=args.debug
     )
 
 if __name__ == '__main__':
