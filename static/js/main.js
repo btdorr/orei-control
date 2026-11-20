@@ -8,7 +8,7 @@ import { AudioControl } from './audio.js';
 import { CommandHistory } from './commands.js';
 import { Utils } from './utils.js';
 import { RokuControl } from './roku.js';
-import { SystemManager } from './system.js?v=20261121';
+import { SystemManager } from './system.js';
 
 // Global application state
 window.oreiApp = {
