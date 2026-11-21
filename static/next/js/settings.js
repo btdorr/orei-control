@@ -19,6 +19,8 @@ let history = [];
 let version = null;
 let confirm = null;         // which risky action is waiting for a second tap
 let system = null;
+let holdSeconds = null;  // Roku long-press hold time from the controller
+const HOLD_CHOICES = [0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5];
 let brand = null;       // { title, subtitle } being edited, null until the panel opens
 let logOpen = false;    // command log expanded (kept across re-renders)          // { kind: 'restart'|'shutdown'|'update', ... } while one is running
 
@@ -63,7 +65,12 @@ function rokuSection() {
             ${select(`found${i}`, [['', 'Not connected'], [1, 'HDMI 1'], [2, 'HDMI 2'], [3, 'HDMI 3'], [4, 'HDMI 4']], assigned(d.ip))}
         </div>`).join('') + '<div class="btn-row"><button class="btn primary" data-save-rokus>Save Rokus</button></div>';
     }
-    return `<section id="set-rokus"><h3>Rokus</h3>${rows}
+    const choices = holdSeconds === null || HOLD_CHOICES.includes(holdSeconds)
+        ? HOLD_CHOICES : [...HOLD_CHOICES, holdSeconds].sort((a, b) => a - b);
+    const hold = holdSeconds === null ? '' : `<div class="kv"><label for="setHold">OK long-press hold</label>${
+        select('setHold', choices.map(s => [s, `${s} ${s === 1 ? 'second' : 'seconds'}`]), holdSeconds)}</div>
+        <p class="hint">Holding OK on the remote holds it on the Roku this long. Raise it if an app's menu does not open.</p>`;
+    return `<section id="set-rokus"><h3>Rokus</h3>${rows}${hold}
         <div class="btn-row"><button class="btn" data-find-rokus${searching ? ' disabled' : ''}>Find Rokus</button></div>${results}</section>`;
 }
 
@@ -168,11 +175,13 @@ async function loadHistory() {
 }
 
 async function loadAll() {
-    const [ver, ser] = await Promise.all([
+    const [ver, ser, rk] = await Promise.all([
         api.get('/api/version').catch(() => ({})),
         api.get('/api/config/serial').catch(() => ({})),
+        api.get('/api/config/roku').catch(() => ({})),
     ]);
     if (ver.success) version = ver.version;
+    if (rk.success) holdSeconds = rk.hold_seconds;
     if (ser.success) serial = ser;
     render();
     await loadHistory();
@@ -317,6 +326,11 @@ export const Settings = {
             const t = e.target;
             if (t.id === 'setRes') { if (await Device.setResolution(t.value) !== null) output.res = Number(t.value); }
             else if (t.id === 'setHdcp') { if (await Device.setHdcp(t.value) !== null) output.hdcp = Number(t.value); }
+            else if (t.id === 'setHold') {
+                const data = await api.post('/api/config/roku', { hold_seconds: Number(t.value) }).catch(err => ({ error: err.message }));
+                if (data.success) { holdSeconds = data.hold_seconds; notify(`OK long press set to ${holdSeconds} seconds`, 'info'); }
+                else notify(`Hold time not saved: ${data.error}`);
+            }
             else if (t.id === 'setPort') {
                 const data = await api.post('/api/config/serial', { port: t.value });
                 if (data.success) {

@@ -35,12 +35,21 @@ app = Flask(__name__)
 # Configuration
 APP_CONFIG_FILE = os.environ.get('OREI_CONFIG', 'app_config.json')
 
+ROKU_HOLD_RANGE = (0.5, 5.0)
+
+
+def valid_hold_seconds(value):
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and ROKU_HOLD_RANGE[0] <= value <= ROKU_HOLD_RANGE[1])
+
+
 class Config:
     def __init__(self):
         self.SERIAL_PORT = '/dev/serial0'  # Default Raspberry Pi serial port
         self.BAUD_RATE = 115200
         self.TIMEOUT = 2
         self.QUIET_GAP = 0.1  # Seconds of silence that end a response (see send_command)
+        self.ROKU_HOLD_SECONDS = 1.0  # How long a Roku long press holds the key (send_roku_hold)
         self.load_config()
     
     def load_config(self):
@@ -51,6 +60,9 @@ class Config:
                     config_data = json.load(f)
                     self.SERIAL_PORT = config_data.get('serial_port', self.SERIAL_PORT)
                     self.BAUD_RATE = config_data.get('baud_rate', self.BAUD_RATE)
+                    hold = config_data.get('roku_hold_seconds')
+                    if valid_hold_seconds(hold):
+                        self.ROKU_HOLD_SECONDS = float(hold)
                     logger.info(f"Loaded config: serial_port={self.SERIAL_PORT}, baud_rate={self.BAUD_RATE}")
             except (json.JSONDecodeError, IOError) as e:
                 logger.warning(f"Failed to load config file: {e}")
@@ -60,7 +72,8 @@ class Config:
         try:
             config_data = {
                 'serial_port': self.SERIAL_PORT,
-                'baud_rate': self.BAUD_RATE
+                'baud_rate': self.BAUD_RATE,
+                'roku_hold_seconds': self.ROKU_HOLD_SECONDS,
             }
             with open(APP_CONFIG_FILE, 'w') as f:
                 json.dump(config_data, f, indent=2)
@@ -492,10 +505,7 @@ def send_roku_command(ip, command):
     except requests.exceptions.RequestException:
         return False
 
-# Long press: the Roku sees the key held for ROKU_HOLD_SECONDS (e.g. OK opens an app's context menu)
-ROKU_HOLD_SECONDS = 1.0
-
-
+# Long press: the Roku sees the key held for config.ROKU_HOLD_SECONDS (e.g. OK opens an app's context menu)
 def send_roku_hold(ip, command):
     """Send keydown, wait, then keyup. keyup is always attempted so the key never stays down."""
     if not valid_roku_ip(ip) or not ROKU_KEY_PATTERN.match(str(command)):
@@ -504,7 +514,7 @@ def send_roku_hold(ip, command):
         response = requests.post(f"http://{ip}:8060/keydown/{command}", timeout=5)
         if response.status_code != 200:
             return False
-        time.sleep(ROKU_HOLD_SECONDS)
+        time.sleep(config.ROKU_HOLD_SECONDS)
     except requests.exceptions.RequestException:
         return False
     finally:
@@ -838,6 +848,27 @@ def get_serial_config():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/config/roku', methods=['GET'])
+def get_roku_config():
+    return jsonify({'success': True, 'hold_seconds': config.ROKU_HOLD_SECONDS})
+
+
+@app.route('/api/config/roku', methods=['POST'])
+def set_roku_config():
+    """Set how long a Roku long press holds the key"""
+    data = request.get_json(silent=True)
+    hold = data.get('hold_seconds') if isinstance(data, dict) else None
+    if not valid_hold_seconds(hold):
+        low, high = ROKU_HOLD_RANGE
+        return jsonify({'success': False, 'error': f'Hold time must be {low} to {high} seconds'}), 400
+    previous = config.ROKU_HOLD_SECONDS
+    config.ROKU_HOLD_SECONDS = float(hold)
+    if not config.save_config():
+        config.ROKU_HOLD_SECONDS = previous
+        return jsonify({'success': False, 'error': 'Failed to save configuration'}), 500
+    return jsonify({'success': True, 'hold_seconds': config.ROKU_HOLD_SECONDS})
+
 
 @app.route('/api/config/serial', methods=['POST'])
 def set_serial_config():
