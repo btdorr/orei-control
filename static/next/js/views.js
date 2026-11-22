@@ -229,8 +229,22 @@ function render() {
     renderRemote();
 }
 
+// Turn off everything asks first. The question goes away on its own if nobody answers.
+let offTimer;
+function showOffConfirm(show) {
+    clearTimeout(offTimer);
+    $('offBtn').hidden = show;
+    $('offConfirm').hidden = !show;
+    if (show) {
+        $('offGo').focus();
+        offTimer = setTimeout(() => showOffConfirm(false), 6000);
+    }
+}
+
 export const Views = {
     init({ openSettings }) {
+        $('offBtn').innerHTML = icon('power');
+        $('offCancel').innerHTML = icon('close');
         $('refreshBtn').innerHTML = icon('refresh');
         $('openSettings').innerHTML = icon('sliders');
         subscribe(render);
@@ -271,6 +285,13 @@ export const Views = {
                 setLast(total === 0 ? 'No Rokus set up' : `Sent Play/Pause to ${sent} of ${total} Rokus`);
             } else if (d.openSettings !== undefined || t.id === 'openSettings') {
                 openSettings(d.openSettings);
+            } else if (t.id === 'offBtn') {
+                showOffConfirm(true);
+            } else if (t.id === 'offCancel') {
+                showOffConfirm(false);
+            } else if (t.id === 'offGo') {
+                showOffConfirm(false);
+                Device.powerOffAll();
             } else if (t.id === 'refreshBtn') {
                 Device.refresh();
             } else if (t.id === 'bannerAction') {

@@ -108,6 +108,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn[aria-busy="true"] svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.off-confirm { display: flex; gap: 6px; align-items: center; }
+.off-confirm .btn { white-space: nowrap; }
 
 /* Banner for offline / matrix off */
 .banner {

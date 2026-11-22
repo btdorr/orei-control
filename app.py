@@ -18,6 +18,7 @@ import logging
 import subprocess
 import requests
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 import serial
@@ -1139,6 +1140,39 @@ def set_branding():
 
 
 # System Management API endpoint
+# Everything off: Home on every Roku (stops streaming), PowerOff on every Roku (the Roku sends
+# HDMI-CEC standby, which turns off the TV when the CEC path through the matrix works), then the matrix.
+# The matrix goes last because turning it off cuts the HDMI path the CEC message travels on.
+POWER_OFF_ALL_HOME_WAIT = 1.0   # seconds for Home to land before PowerOff
+POWER_OFF_ALL_CEC_WAIT = 2.0    # seconds for CEC standby to reach the TV before the matrix turns off
+
+
+def send_key_to_all_rokus(mappings, key):
+    """Send one key to every mapped Roku in parallel. Returns {hdmi: bool}."""
+    if not mappings:
+        return {}
+    with ThreadPoolExecutor(max_workers=len(mappings)) as pool:
+        futures = {hdmi: pool.submit(send_roku_command, device.get('ip'), key) for hdmi, device in mappings.items()}
+    return {hdmi: future.result() for hdmi, future in futures.items()}
+
+
+@app.route('/api/power-off-all', methods=['POST'])
+def power_off_all():
+    """Turn off the Rokus, the TV (through Roku CEC), and the matrix"""
+    mappings = load_roku_mappings()
+    home = send_key_to_all_rokus(mappings, 'Home')
+    if mappings:
+        time.sleep(POWER_OFF_ALL_HOME_WAIT)
+    power_off = send_key_to_all_rokus(mappings, 'PowerOff')
+    if mappings:
+        time.sleep(POWER_OFF_ALL_CEC_WAIT)
+    response, error = serial_manager.send_command('power 0!')
+    rokus = {hdmi: {'home': home[hdmi], 'power_off': power_off[hdmi]} for hdmi in mappings}
+    if error:
+        return jsonify({'success': False, 'error': error, 'rokus': rokus})
+    return jsonify({'success': True, 'response': response, 'rokus': rokus})
+
+
 @app.route('/api/system/shutdown', methods=['POST'])
 def system_shutdown():
     """Shutdown the Raspberry Pi system"""
