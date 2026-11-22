@@ -25,6 +25,11 @@
                 <div class="sub">__APP_SUBTITLE__</div>
             </div>
             <span class="chip-status" id="status" data-state="unknown" role="status"><i></i><span id="statusText">Checking</span></span>
+            <button class="icon-btn" id="offBtn" aria-label="Turn off everything" title="Turn off the Rokus, TV, and matrix"></button>
+            <span class="off-confirm" id="offConfirm" hidden>
+                <button class="btn danger primary" id="offGo">Turn off all</button>
+                <button class="icon-btn" id="offCancel" aria-label="Cancel" title="Cancel"></button>
+            </span>
             <button class="icon-btn" id="refreshBtn" aria-label="Read settings from the matrix" title="Read settings from the matrix"></button>
             <button class="icon-btn" id="openSettings" aria-label="Settings" title="Settings"></button>
         </header>

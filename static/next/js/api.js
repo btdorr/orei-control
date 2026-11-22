@@ -11,7 +11,7 @@ async function request(url, options = {}) {
     return data;
 }
 
-function friendly(error) {
+export function friendly(error) {
     if (/serial port not connected|serial communication error/i.test(error || '')) {
         return "The controller can't reach the matrix. Check the serial cable or the port in Settings.";
     }

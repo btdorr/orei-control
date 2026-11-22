@@ -2,9 +2,9 @@
 // Serial commands run one at a time on the server, so order decides how fast the UI updates:
 // the TV drawing updates from local state first, then reads confirm it.
 
-import { api } from './api.js';
+import { api, friendly } from './api.js';
 import { notify } from './notice.js';
-import { state, update, windowCount, saveUiState } from './store.js';
+import { state, update, windowCount, saveUiState, inputName } from './store.js';
 
 const VARIANT = { 3: 'PBP', 4: 'triple', 5: 'quad' };
 const PIP_POSITIONS = { 'left top': 1, 'left bottom': 2, 'right top': 3, 'right bottom': 4 };
@@ -178,6 +178,26 @@ export const Device = {
         if (await api.command(on ? 'power 1!' : 'power 0!') === null) return;
         notify(on ? 'Turning on the matrix' : 'Turning off the matrix', 'info');
         await new Promise(r => setTimeout(r, on ? 5000 : 2000));
+        await this.refresh();
+    },
+
+    // Home and PowerOff on every Roku (PowerOff turns off the TV through HDMI-CEC), then the matrix.
+    // The server runs the sequence, so it finishes even if this page closes.
+    async powerOffAll() {
+        notify('Turning off the Rokus, TV, and matrix', 'info');
+        let data;
+        try {
+            data = await api.post('/api/power-off-all');
+        } catch (e) {
+            notify("Can't reach the controller. Check the network and try again.");
+            return;
+        }
+        const missed = Object.entries(data.rokus || {})
+            .filter(([, r]) => !r.home || !r.power_off)
+            .map(([hdmi]) => inputName(hdmi));
+        if (!data.success) notify(`The matrix did not turn off. ${friendly(data.error)}`);
+        else if (missed.length) notify(`Matrix off. No response from ${missed.join(', ')}.`);
+        else notify('Everything is off', 'info');
         await this.refresh();
     },
 
